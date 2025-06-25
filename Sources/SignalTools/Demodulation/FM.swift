@@ -11,7 +11,7 @@ import Accelerate
 
 /// This function will do FM demodulation, but much slower than demodulateFM or demodulateFMAlt
 /// Here for conceptual understanding.
-func demodulateFMSlow(_ samples: [DSPComplex]) -> [Float] {
+public func demodulateFMSlow(_ samples: [DSPComplex]) -> [Float] {
     var diffs =  [Float].init(repeating: 0.0, count: samples.count - 1)
     for i in 1..<samples.count {
         let i0 = samples[i-1].real
@@ -27,7 +27,7 @@ func demodulateFMSlow(_ samples: [DSPComplex]) -> [Float] {
 }
 
 /// Demodulates FM by mutliplying each sample by the conjugate of the preceding sample, providing phase in radians.
-func demodulateFM(_ samples: [DSPComplex]) -> [Float] {
+public func demodulateFM(_ samples: [DSPComplex]) -> [Float] {
     let n = vDSP_Length(samples.count - 1)
     var diffs = [Float].init(repeating: 0.0, count: samples.count - 1)
     samples.withUnsafeBufferPointer { samplesPtr in

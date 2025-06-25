@@ -6,50 +6,50 @@
 //
 import Accelerate
 
-protocol Filter {
+public protocol Filter {
     func filteredSignal( _ input: inout [Float])
     func filteredSignal(_ input: inout [DSPComplex])
 }
 
-enum FilterType {
+public enum FilterType {
     case lowPass
 }
 
 // Class representing cascading biquad IIR filter
-class IIRFilter: Filter {
+public class IIRFilter: Filter {
     var params: [FilterParameter]
     var biquad: vDSP.Biquad<Float>?
     
-    init() {
+    public init() {
         params = []
     }
     
-    func addCustomParams(_ params: [FilterParameter]) -> IIRFilter {
+    public func addCustomParams(_ params: [FilterParameter]) -> IIRFilter {
         self.params.append(contentsOf: params)
         biquad = nil
         return self
     }
     
-    func addLowpassFilter(sampleRate: Int, frequency: Double, q: Double) -> IIRFilter {
+    public func addLowpassFilter(sampleRate: Int, frequency: Double, q: Double) -> IIRFilter {
         params.append(LowPassFilterParameter(sampleRate: Double(sampleRate), frequency: frequency, q: q))
         biquad = nil
         return self
     }
     
-    func addHighpassFilter(sampleRate: Int, frequency: Double, q: Double) -> IIRFilter {
+    public func addHighpassFilter(sampleRate: Int, frequency: Double, q: Double) -> IIRFilter {
         params.append(HighPassFilterParameter(sampleRate: Double(sampleRate), frequency: frequency, q: q))
         biquad = nil
         return self
     }
     
-    func filteredSignal(_ input: inout [Float]) {
+    public func filteredSignal(_ input: inout [Float]) {
         if biquad == nil {
             initBiquad()
         }
         biquad!.apply(input: input, output: &input)
     }
     
-    func filteredSignal(_ input: inout [DSPComplex]) {
+    public func filteredSignal(_ input: inout [DSPComplex]) {
         if biquad == nil {
             initBiquad()
         }
@@ -87,13 +87,13 @@ class IIRFilter: Filter {
     
 }
 
-class FIRFilter: Filter {
+public class FIRFilter: Filter {
     var taps: [Float]
     var tapsLength: Int
     var stateBuffer: UnsafeMutableBufferPointer<Float> // Last 'tapsLength - 1' values from previous buffer, need for convolution
     var complexStateBuffer: UnsafeMutableBufferPointer<DSPComplex>
     
-    init(type: FilterType, cutoffFrequency: Double, sampleRate: Int, tapsLength: Int, windowFunc: vDSP.WindowSequence = .hamming) throws {
+    public init(type: FilterType, cutoffFrequency: Double, sampleRate: Int, tapsLength: Int, windowFunc: vDSP.WindowSequence = .hamming) throws {
         var generatedFilter: [Float]
         switch type {
         case .lowPass:
@@ -108,7 +108,7 @@ class FIRFilter: Filter {
         complexStateBuffer.initialize(repeating: DSPComplex(real: 0, imag: 0))
     }
     
-    init(taps: [Float]) {
+    public init(taps: [Float]) {
         self.taps = taps
         self.tapsLength = taps.count
         stateBuffer = .allocate(capacity: tapsLength - 1)
@@ -122,7 +122,7 @@ class FIRFilter: Filter {
         complexStateBuffer.deallocate()
     }
     
-    func filteredSignal(_ input: inout [Float]) {
+    public func filteredSignal(_ input: inout [Float]) {
         let workingBuffer = UnsafeMutableBufferPointer<Float>.allocate(capacity: input.count + tapsLength - 1)
         defer {
             workingBuffer.deallocate()
@@ -138,7 +138,7 @@ class FIRFilter: Filter {
         input = tempOutputBuffer
     }
     
-    func filteredSignal(_ input: inout [DSPComplex]) {
+    public func filteredSignal(_ input: inout [DSPComplex]) {
         let workingBuffer = UnsafeMutableBufferPointer<DSPComplex>.allocate(capacity: input.count + tapsLength - 1)
         defer {
             workingBuffer.deallocate()
@@ -167,7 +167,7 @@ class FIRFilter: Filter {
         vDSP.convert(splitComplexVector: splitComplexOutputBuffer, toInterleavedComplexVector: &input)
     }
     
-    func filtfilt(_ input: inout [DSPComplex]) {
+    public func filtfilt(_ input: inout [DSPComplex]) {
         self.filteredSignal(&input)
         var reversedFilteredSignal: [DSPComplex] = input.reversed()
         let freshFilter = FIRFilter(taps: self.taps)
@@ -185,14 +185,14 @@ class FIRFilter: Filter {
     
 }
 
-class FilterParameter {
-    let b0: Double
-    let b1: Double
-    let b2: Double
-    let a1: Double
-    let a2: Double
+public class FilterParameter {
+    public let b0: Double
+    public let b1: Double
+    public let b2: Double
+    public let a1: Double
+    public let a2: Double
 
-    init(_ b0: Double, _ b1: Double, _ b2: Double, _ a1: Double, _ a2: Double) {
+    public init(_ b0: Double, _ b1: Double, _ b2: Double, _ a1: Double, _ a2: Double) {
         self.b0 = b0
         self.b1 = b1
         self.b2 = b2
@@ -200,11 +200,11 @@ class FilterParameter {
         self.a2 = a2
     }
     
-    convenience init(_ b0: Double, _ b1: Double, _ b2: Double, _ a0: Double, _ a1: Double, _ a2: Double) {
+    public convenience init(_ b0: Double, _ b1: Double, _ b2: Double, _ a0: Double, _ a1: Double, _ a2: Double) {
         self.init(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0)
     }
     
-    convenience init(_ params: [Double]) throws {
+    public convenience init(_ params: [Double]) throws {
         if(params.count == 5) {
             self.init(params[0], params[1], params[2], params[3], params[4])
         }
@@ -217,13 +217,13 @@ class FilterParameter {
         }
     }
     
-    func getvDSPBiquad() -> vDSP.Biquad<Float> {
+    public func getvDSPBiquad() -> vDSP.Biquad<Float> {
         return vDSP.Biquad(coefficients: [b0, b1, b2, a1, a2], channelCount: 1, sectionCount: 1, ofType: Float.self)!
     }
 }
 
-class LowPassFilterParameter: FilterParameter {
-    init(sampleRate: Double, frequency: Double, q: Double) {
+public class LowPassFilterParameter: FilterParameter {
+    public init(sampleRate: Double, frequency: Double, q: Double) {
         let w0: Double = 2.0 * Double.pi * frequency / sampleRate
         let alpha: Double = sin(w0) / (2.0 * q)
 
@@ -238,8 +238,8 @@ class LowPassFilterParameter: FilterParameter {
     }
 }
 
-class HighPassFilterParameter: FilterParameter {
-    init(sampleRate: Double, frequency: Double, q: Double) {
+public class HighPassFilterParameter: FilterParameter {
+    public init(sampleRate: Double, frequency: Double, q: Double) {
         let w0: Double = 2.0 * Double.pi * frequency / sampleRate
         let alpha: Double = sin(w0) / (2.0 * q)
 
@@ -255,7 +255,7 @@ class HighPassFilterParameter: FilterParameter {
 }
 
 // Generates a finite impulse response lowpass filter given a cutoff frequency, sampleRate, and optionally a windowing func
-func makeFIRLowpassTaps(length: Int, cutoff: Double, sampleRate: Int, windowSequence: vDSP.WindowSequence = .hamming) -> [Float] {
+public func makeFIRLowpassTaps(length: Int, cutoff: Double, sampleRate: Int, windowSequence: vDSP.WindowSequence = .hamming) -> [Float] {
     let sampleRateAsDouble = Double(sampleRate)
     precondition(length > 0, "Filter length must be > 0")
     precondition(cutoff > 0 && cutoff < sampleRateAsDouble / 2, "Cutoff must be between 0 Hz and Nyquist")

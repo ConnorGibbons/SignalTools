@@ -7,7 +7,7 @@
 
 import Accelerate
 
-extension [Float] {
+public extension [Float] {
     
     func standardDeviation() -> Float {
         return vDSP.standardDeviation(self)
@@ -23,7 +23,7 @@ extension [Float] {
     
 }
 
-extension DSPComplex {
+public extension DSPComplex {
     
     func magnitude() -> Float {
         return ((real * real) + (imag * imag)).squareRoot()
@@ -31,7 +31,7 @@ extension DSPComplex {
     
 }
 
-extension [DSPComplex] {
+public extension [DSPComplex] {
     
     func magnitude() -> [Float] {
         return self.map({$0.magnitude()})

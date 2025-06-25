@@ -9,7 +9,7 @@ import Accelerate
 
 // Frequency Shifting
 
-func shiftFrequencyToBaseband(rawIQ: [DSPComplex], result: inout [DSPComplex], frequency: Float, sampleRate: Int) {
+public func shiftFrequencyToBaseband(rawIQ: [DSPComplex], result: inout [DSPComplex], frequency: Float, sampleRate: Int) {
     guard rawIQ.count == result.count else {
         return
     }
@@ -40,7 +40,7 @@ func shiftFrequencyToBaseband(rawIQ: [DSPComplex], result: inout [DSPComplex], f
 
 /// I've found that without using Double internally, weird artifacts can occur.
 /// Fair warning, this is probably a lot slower than the regular shift to baseband function.
-func shiftFrequencyToBasebandHighPrecision(rawIQ: [DSPComplex], result: inout [DSPComplex], frequency: Float, sampleRate: Int) {
+public func shiftFrequencyToBasebandHighPrecision(rawIQ: [DSPComplex], result: inout [DSPComplex], frequency: Float, sampleRate: Int) {
     guard rawIQ.count == result.count else {
         return
     }
@@ -83,11 +83,11 @@ func shiftFrequencyToBasebandHighPrecision(rawIQ: [DSPComplex], result: inout [D
 
 // Sample Time / Index Math
 
-func sampleIndexToTime(_ sampleIndex: Int, sampleRate: Int) -> Double {
+public func sampleIndexToTime(_ sampleIndex: Int, sampleRate: Int) -> Double {
     return Double(sampleIndex) / Double(sampleRate)
 }
 
-func timeToSampleIndex(_ time: Double, sampleRate: Int) -> Int {
+public func timeToSampleIndex(_ time: Double, sampleRate: Int) -> Int {
     return Int(time * Double(sampleRate))
 }
 
@@ -97,13 +97,13 @@ func timeToSampleIndex(_ time: Double, sampleRate: Int) -> Int {
 /// Converts per-sample phase differences (radians) to instant frequency
 /// rad x sampleRate = radians per second
 /// radians per second / 2pi = freq.
-func radToFrequency(radDiffs: [Float], sampleRate: Int) -> [Float] {
+public func radToFrequency(radDiffs: [Float], sampleRate: Int) -> [Float] {
     let coefficient = Float(sampleRate) / (2 * Float.pi)
     return vDSP.multiply(coefficient, radDiffs)
 }
 
 /// Calculates angle (radians) for each entry in an array of IQ samples.
-func calculateAngle(rawIQ: [DSPComplex], result: inout [Float]) {
+public func calculateAngle(rawIQ: [DSPComplex], result: inout [Float]) {
     let sampleCount = rawIQ.count
     guard sampleCount == result.count && !rawIQ.isEmpty else {
         return
@@ -119,7 +119,7 @@ func calculateAngle(rawIQ: [DSPComplex], result: inout [Float]) {
 /// vDSP.phase output has a range of [-pi, pi]
 /// If the range is surpassed, it will wrap to the opposite end.
 /// Ex. if the value is (real: -1, imag: 0.001) the angle will be roughly pi. Once imag becomes negative, the value jumps to -pi, so we need to add 2pi to account.
-func unwrapAngle(_ angle: inout [Float]) {
+public func unwrapAngle(_ angle: inout [Float]) {
     let discontinuityThreshold = Float.pi
     var storedAccumulation: Float = 0
     var index = 1
