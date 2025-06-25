@@ -175,6 +175,15 @@ public class FIRFilter: Filter {
         input = reversedFilteredSignal.reversed()
     }
     
+    public func filtfilt(_ input: inout [Float]) {
+        self.filteredSignal(&input)
+        var reversedFilteredSignal: [Float] = input.reversed()
+        let freshFilter = FIRFilter(taps: self.taps)
+        freshFilter.filteredSignal(&reversedFilteredSignal)
+        input = reversedFilteredSignal.reversed()
+    }
+
+    
     public func getTaps() -> [Float] {
         return self.taps
     }
