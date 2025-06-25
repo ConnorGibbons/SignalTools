@@ -175,6 +175,10 @@ public class FIRFilter: Filter {
         input = reversedFilteredSignal.reversed()
     }
     
+    public func getTaps() -> [Float] {
+        return self.taps
+    }
+    
     private func copyToStateBuffer(_ input: inout [Float]) {
         _ = stateBuffer.update(fromContentsOf: input.dropFirst(input.count - tapsLength + 1))
     }
