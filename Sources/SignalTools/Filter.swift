@@ -149,7 +149,7 @@ public class FIRFilter: Filter {
         currentBufferStartingPoint.initialize(from: input, count: input.count)
         
         copyToComplexStateBuffer(&input)
-        var splitComplexOutputBuffer = DSPSplitComplex(realp: .allocate(capacity: input.count), imagp: .allocate(capacity: input.count))
+        let splitComplexOutputBuffer = DSPSplitComplex(realp: .allocate(capacity: input.count), imagp: .allocate(capacity: input.count))
         var realOutputBuffer = UnsafeMutableBufferPointer(start: splitComplexOutputBuffer.realp, count: input.count)
         var imagOutputBuffer = UnsafeMutableBufferPointer(start: splitComplexOutputBuffer.imagp, count: input.count)
         var splitComplexBuffer = DSPSplitComplex(realp: .allocate(capacity: input.count + tapsLength - 1), imagp: .allocate(capacity: input.count + tapsLength - 1))

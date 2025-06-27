@@ -10,15 +10,27 @@ import Accelerate
 public extension [Float] {
     
     func standardDeviation() -> Float {
-        return vDSP.standardDeviation(self)
+        var result = Float()
+        var mean = Float()
+        let stride = vDSP_Stride(1)
+        vDSP_normalize(self, stride, nil, vDSP_Stride(1), &mean, &result, vDSP_Length(self.count))
+        return result
     }
     
     func average() -> Float {
-        return vDSP.mean(self)
+        var result = Float()
+        let stride = vDSP_Stride(1)
+        vDSP_meanv(self, stride, &result, vDSP_Length(self.count))
+        return result
     }
     
     func normalize() -> [Float] {
-        return vDSP.normalize(self)
+        let stride = vDSP_Stride(1)
+        var result = [Float].init(repeating: 0.0, count: self.count)
+        var mean: Float = 0.0
+        var standardDeviation: Float = 0.0
+        vDSP_normalize(self, stride, &result, stride, &mean, &standardDeviation, vDSP_Length(self.count))
+        return result
     }
     
 }

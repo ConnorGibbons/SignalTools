@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "SignalTools",
     platforms: [
-        .macOS(.v15)
+        .macOS(.v10_15)
     ],
     products: [
         .library(
