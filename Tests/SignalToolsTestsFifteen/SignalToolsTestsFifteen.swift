@@ -5,6 +5,7 @@
 //  Created by Connor Gibbons  on 8/12/25.
 //
 
+// Putting this here so this code isn't attempted to compile on older macOS versions (need Xcode 16 ((macOS 14.5)) for Swift 6.0)
 #if compiler(>=6.0)
 
 import XCTest
