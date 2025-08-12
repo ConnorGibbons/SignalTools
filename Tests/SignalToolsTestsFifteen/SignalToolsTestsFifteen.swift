@@ -5,6 +5,8 @@
 //  Created by Connor Gibbons  on 8/12/25.
 //
 
+#if compiler(>=6.0)
+
 import XCTest
 import Accelerate
 import SignalTools
@@ -61,18 +63,4 @@ final class SignalToolsTestsFifteen: XCTestCase {
     
 }
 
-extension vDSP {
-    
-    // These should never be used (and obviously don't work), it's just a trick to make compilation not fail on older macOS versions due to the existence of the above tests.
-    
-    @available(macOS, introduced: 10.15, obsoleted: 15.0)
-    public static func normalize(_ x: [Float]) -> [Float] {
-        return []
-    }
-    
-    @available(macOS, introduced: 10.15, obsoleted: 15.0)
-    public static func standardDeviation(_ x: [Float]) -> Float {
-        return 0.0
-    }
-
-}
+#endif
