@@ -20,5 +20,9 @@ let package = Package(
             name: "SignalToolsTests",
             dependencies: ["SignalTools"]
         ),
+        .testTarget(
+            name: "SignalToolsTestsFifteen",
+            dependencies: ["SignalTools"]
+        )
     ]
 )
