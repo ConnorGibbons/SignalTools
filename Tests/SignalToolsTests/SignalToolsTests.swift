@@ -41,6 +41,7 @@ class SignalToolsTests: XCTestCase {
     
     @available(macOS 15.0, *)
     func testFloatAverageExtensionCorrectnessAndPerformance() throws {
+        guard #available(macOS 15.0, *) else { throw XCTSkip("Must be on macOS 15 to run this test.") }
         let t0_floatGen = Date.timeIntervalSinceReferenceDate
         _ = randomFloatData[0]
         let t1_floatGen = Date.timeIntervalSinceReferenceDate
@@ -61,6 +62,7 @@ class SignalToolsTests: XCTestCase {
     
     @available(macOS 15.0, *)
     func testFloatNormalizeAndStdDevExtensionsCorrectnessAndPerformance() throws {
+        guard #available(macOS 15.0, *) else { throw XCTSkip("Must be on macOS 15 to run this test.") }
         let t0_floatGen = Date.timeIntervalSinceReferenceDate
         _ = randomFloatData[0]
         let t1_floatGen = Date.timeIntervalSinceReferenceDate
@@ -81,6 +83,7 @@ class SignalToolsTests: XCTestCase {
     
     @available(macOS 15.0, *)
     func testFloatNormalize() throws {
+        guard #available(macOS 15.0, *) else { throw XCTSkip("Must be on macOS 15 to run this test.") }
         let t0_floatGen = Date.timeIntervalSinceReferenceDate
         _ = randomFloatData[0]
         let t1_floatGen = Date.timeIntervalSinceReferenceDate
