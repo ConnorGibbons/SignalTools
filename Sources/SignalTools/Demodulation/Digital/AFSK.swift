@@ -11,11 +11,108 @@
 import Foundation
 import Accelerate
 
+public struct BitBuffer {
+    // Buffers filled left to right
+    private var buffer: [ByteBuffer] = []
+    private var bitCount: Int = 0
+    public var count: Int { return bitCount }
+    
+    public init() {}
+    
+    public mutating func append(_ bit: UInt8) {
+        guard bit == 0 || bit == 1 else { print("Cannot append bit to BitBuffer, it must be 0 or 1."); return }
+        var index = buffer.count - 1
+        if buffer.isEmpty || buffer[index].isFull {
+            buffer.append(ByteBuffer())
+            index += 1
+        }
+        buffer[index].append(bit)
+        bitCount += 1
+    }
+    
+    public subscript (index: Int) -> Int {
+        let byteIndex = index >> 3 // Equivalent to division by 8 w/ rounding down
+        let bitIndex = index & 7
+        guard byteIndex < buffer.count else { return 0 }
+        return buffer[byteIndex][bitIndex]
+    }
+    
+    public func getBitstring() -> String {
+        var bitString: String = String()
+        bitString.reserveCapacity(bitCount)
+        for i in 0..<bitCount {
+            if(self[i] == 0) { bitString += "0" }
+            else { bitString += "1" }
+        }
+        return bitString
+    }
+    
+}
+
+private struct ByteBuffer: Equatable {
+    private var buffer: UInt8 = 0
+    private var bitCount: Int = 0
+    var isFull: Bool { bitCount == 8 }
+    
+    mutating func append(_ bit: UInt8) {
+        guard bit == 0 || bit == 1 else { print("Cannot append bit to ByteBuffer, must be 0 or 1"); return }
+        guard !isFull else { print("Cannot append bit to ByteBuffer, it is full."); return }
+        if bit == 1 {
+            let mask = UInt8(0b10000000) >> bitCount
+            buffer |= mask
+        }
+        bitCount += 1
+    }
+    
+    static func == (lhs: ByteBuffer, rhs: ByteBuffer) -> Bool {
+        return lhs.buffer == rhs.buffer
+    }
+    
+    subscript(index: Int) -> Int {
+        let mask: UInt8 = 0b10000000 >> index
+        return (buffer & mask) != 0 ? 1 : 0
+    }
+    
+    mutating func clear() {
+        buffer = 0
+        bitCount = 0
+    }
+    
+}
+
+/// General-purpose Binary AFSK demodulator, taking mark (1) and space (0) frequencies, sample rate, baud as parameters.
+/// Works on Binary *AFSK*, where bit values are encoded as tones. Note that this will not work with FSK -- where FM demod output will (ideally) alternate between two amplitude levels as opposed to AFSK's tones.
+/// Outputs: BitBuffer (see struct) and a [Float] contianing the confidence with which each bit was chosen. 'confidence' refers to the difference in Goertzel power.
+public func afskDemodulate(samples: [Float], sampleRate: Int, baud: Int, markFreq: Int, spaceFreq: Int) -> (BitBuffer, [Float])? {
+    let nyquistFreq: Float = Float(sampleRate) / 2.0
+    guard Float(markFreq) < nyquistFreq && Float(spaceFreq) < nyquistFreq else {
+        print("Error: mark & space frequencies are not representable within this sample rate.")
+        return nil
+    }
+    guard sampleRate % baud == 0 else {
+        print("Error: sampleRate must be an integer multiple of baud.")
+        return nil
+    }
+    let samplesPerBit = sampleRate / baud
+    var bits: BitBuffer = BitBuffer()
+    var confidenceArr: [Float] = []
+    var currIndex = 0
+    while(currIndex + samplesPerBit <= samples.count) {
+        let bitSamples = Array(samples[currIndex..<(currIndex+samplesPerBit)])
+        let markPower = goertzelPower(samples: bitSamples, targetFrequency: Float(markFreq), sampleRate: sampleRate)
+        let spacePower = goertzelPower(samples: bitSamples, targetFrequency: Float(spaceFreq), sampleRate: sampleRate)
+        markPower > spacePower ? bits.append(1) : bits.append(0)
+        confidenceArr.append(abs(markPower - spacePower))
+        currIndex += samplesPerBit
+    }
+    return (bits, confidenceArr)
+}
+
 /// Computes power at targetFrequency throughout samples.
 /// Equivalent to a single-bin DFT, good for efficient tone detection.
 /// Based on pseudocode here: https://en.wikipedia.org/wiki/Goertzel_algorithm
 public func goertzelPower(samples: [Float], targetFrequency: Float, sampleRate: Int) -> Float {
-    let bin = calcBinIndex(targetFrequency: targetFrequency, sampleCount: samples.count, sampleRate: sampleRate)
+    // let bin = calcBinIndex(targetFrequency: targetFrequency, sampleCount: samples.count, sampleRate: sampleRate)
     let omega = (2.0 * Float.pi) * (targetFrequency / Float(sampleRate))
     let coeff: Float = 2 * cos(omega)
     var sPrev: Float = 0.0
