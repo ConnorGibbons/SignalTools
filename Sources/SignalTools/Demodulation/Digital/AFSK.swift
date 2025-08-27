@@ -112,7 +112,6 @@ public func afskDemodulate(samples: [Float], sampleRate: Int, baud: Int, markFre
 /// Equivalent to a single-bin DFT, good for efficient tone detection.
 /// Based on pseudocode here: https://en.wikipedia.org/wiki/Goertzel_algorithm
 public func goertzelPower(samples: [Float], targetFrequency: Float, sampleRate: Int) -> Float {
-    // let bin = calcBinIndex(targetFrequency: targetFrequency, sampleCount: samples.count, sampleRate: sampleRate)
     let omega = (2.0 * Float.pi) * (targetFrequency / Float(sampleRate))
     let coeff: Float = 2 * cos(omega)
     var sPrev: Float = 0.0
@@ -123,6 +122,22 @@ public func goertzelPower(samples: [Float], targetFrequency: Float, sampleRate: 
         sPrev = sCurr
     }
     return (sPrev * sPrev) + (sPrev2 * sPrev2) - (coeff * sPrev * sPrev2)
+}
+
+public func goertzelPower(samples: [Float], coeff: Float, sampleRate: Int) -> Float {
+    var sPrev: Float = 0.0
+    var sPrev2: Float = 0.0
+    for n in 0..<samples.count {
+        let sCurr = samples[n] + coeff * sPrev - sPrev2
+        sPrev2 = sPrev
+        sPrev = sCurr
+    }
+    return (sPrev * sPrev) + (sPrev2 * sPrev2) - (coeff * sPrev * sPrev2)
+}
+
+public func getGoertzelCoeff(targetFrequency: Float, sampleRate: Int) -> Float {
+    let omega = (2.0 * Float.pi) * (targetFrequency / Float(sampleRate))
+    return 2 * cos(omega)
 }
 
 /// Returns the frequency corresponding to a DFT bin at binNum.
