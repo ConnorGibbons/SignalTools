@@ -110,6 +110,31 @@ public func afskDemodulate(samples: [Float], sampleRate: Int, baud: Int, markFre
     return (bits, confidenceArr)
 }
 
+/// General-purpose Binary AFSK demodulator, taking mark (1) and space (0) frequencies, sample rate, baud as parameters.
+/// Works on Binary *AFSK*, where bit values are encoded as tones. Note that this will not work with FSK -- where FM demod output will (ideally) alternate between two amplitude levels as opposed to AFSK's tones.
+/// This version takes in mark & space frequencies instead as computed coefficients (see 'coeff' in goertzelPower) to avoid recomputing when calling this function multiple times.
+/// Outputs: BitBuffer (see struct) and a [Float] contianing the confidence with which each bit was chosen. 'confidence' refers to the difference in Goertzel power.
+public func afskDemodulate(samples: [Float], sampleRate: Int, baud: Int, markCoeff: Float, spaceCoeff: Float) -> (BitBuffer, [Float])? {
+    let nyquistFreq: Float = Float(sampleRate) / 2.0
+    guard sampleRate % baud == 0 else {
+        print("Error: sampleRate must be an integer multiple of baud.")
+        return nil
+    }
+    let samplesPerBit = sampleRate / baud
+    var bits: BitBuffer = BitBuffer()
+    var confidenceArr: [Float] = []
+    var currIndex = 0
+    while(currIndex + samplesPerBit <= samples.count) {
+        let bitSamples = Array(samples[currIndex..<(currIndex+samplesPerBit)])
+        let markPower = goertzelPower(samples: bitSamples, coeff: markCoeff, sampleRate: sampleRate)
+        let spacePower = goertzelPower(samples: bitSamples, coeff: spaceCoeff, sampleRate: sampleRate)
+        markPower > spacePower ? bits.append(1) : bits.append(0)
+        confidenceArr.append(abs(markPower - spacePower))
+        currIndex += samplesPerBit
+    }
+    return (bits, confidenceArr)
+}
+
 /// Computes power at targetFrequency throughout samples.
 /// Equivalent to a single-bin DFT, good for efficient tone detection.
 /// Based on pseudocode here: https://en.wikipedia.org/wiki/Goertzel_algorithm
