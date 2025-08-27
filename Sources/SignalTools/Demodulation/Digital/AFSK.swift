@@ -97,10 +97,12 @@ public func afskDemodulate(samples: [Float], sampleRate: Int, baud: Int, markFre
     var bits: BitBuffer = BitBuffer()
     var confidenceArr: [Float] = []
     var currIndex = 0
+    let markCoeff = getGoertzelCoeff(targetFrequency: Float(markFreq), sampleRate: sampleRate)
+    let spaceCoeff = getGoertzelCoeff(targetFrequency: Float(spaceFreq), sampleRate: sampleRate)
     while(currIndex + samplesPerBit <= samples.count) {
         let bitSamples = Array(samples[currIndex..<(currIndex+samplesPerBit)])
-        let markPower = goertzelPower(samples: bitSamples, targetFrequency: Float(markFreq), sampleRate: sampleRate)
-        let spacePower = goertzelPower(samples: bitSamples, targetFrequency: Float(spaceFreq), sampleRate: sampleRate)
+        let markPower = goertzelPower(samples: bitSamples, coeff: markCoeff, sampleRate: sampleRate)
+        let spacePower = goertzelPower(samples: bitSamples, coeff: spaceCoeff, sampleRate: sampleRate)
         markPower > spacePower ? bits.append(1) : bits.append(0)
         confidenceArr.append(abs(markPower - spacePower))
         currIndex += samplesPerBit
