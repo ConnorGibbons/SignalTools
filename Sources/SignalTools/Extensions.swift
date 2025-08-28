@@ -33,6 +33,21 @@ public extension [Float] {
         return result
     }
     
+    func topKIndices(_ k: Int) -> [Int] {
+        guard k <= self.count else {
+            return topKIndices(self.count)
+        }
+        
+        var result: [Int] = .init(repeating: 0, count: k)
+        var mutableSelf = self
+        for i in 0..<k {
+            let topIndex = Int(vDSP.indexOfMaximum(mutableSelf).0)
+            result[i] = topIndex
+            mutableSelf[topIndex] = -Float.infinity
+        }
+        return result
+    }
+    
 }
 
 public extension DSPComplex {

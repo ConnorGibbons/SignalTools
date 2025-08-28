@@ -47,6 +47,26 @@ public struct BitBuffer {
         return bitString
     }
     
+    public func asIntArray() -> [Int] {
+        var array: [Int] = []
+        array.reserveCapacity(bitCount)
+        for i in 0..<bitCount {
+            array.append(self[i])
+        }
+        return array
+    }
+    
+    /// Returns BitBuffer as a float array, each bit as an independent element.
+    /// Useful for running correlations with bits as the signal / template.
+    public func asFloatArray() -> [Float] {
+        var array: [Float] = []
+        array.reserveCapacity(bitCount)
+        for i in 0..<bitCount {
+            array.append(Float(2 * self[i] - 1))
+        }
+        return array
+    }
+    
 }
 
 private struct ByteBuffer: Equatable {

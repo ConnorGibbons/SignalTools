@@ -105,4 +105,41 @@ class SignalToolsTests: XCTestCase {
         }
     }
     
+    func testTopKIndices() {
+        let testArr1: [Float] = [0.0, 11.1, 5.5, 3.3, 2.0, 1.5, 9.3] // Top order: 1, 6, 2, 3, 4, 5, 0
+        XCTAssert(testArr1.topKIndices(1) == [1])
+        XCTAssert(testArr1.topKIndices(2) == [1,6])
+        XCTAssert(testArr1.topKIndices(3) == [1,6,2])
+        XCTAssert(testArr1.topKIndices(4) == [1,6,2,3])
+        XCTAssert(testArr1.topKIndices(5) == [1,6,2,3,4])
+        XCTAssert(testArr1.topKIndices(6) == [1,6,2,3,4,5])
+        XCTAssert(testArr1.topKIndices(0) == [])
+    }
+    
+    func testCorrelation() {
+        // Example from Apple for vDSP_conv
+        let signal: [Float] = [1,2,3,4,5,6,7,8]
+        let template: [Float] = [10,20,30]
+        let expectedResult: [Float] = [140.0, 200.0, 260.0, 320.0, 380.0, 440.0]
+        let result = slidingCorrelation(signal: signal, template: template)
+        XCTAssert(result == expectedResult)
+        
+        var signalBitBuffer = BitBuffer()
+        for bit in [0,1,1,1,0,1,0,0,0,1,1] {
+            signalBitBuffer.append(UInt8(bit))
+        }
+        var templateBitBuffer = BitBuffer()
+        for bit in [0,1,0] {
+            templateBitBuffer.append(UInt8(bit))
+        }
+        
+        let signalAsFloatArr = signalBitBuffer.asFloatArray()
+        let templateAsFloatArr = templateBitBuffer.asFloatArray()
+        // peak should be at index 4, since that's where signal & template perfectly match
+        guard let bitCorrelationResult = slidingCorrelation(signal: signalAsFloatArr, template: templateAsFloatArr) else { XCTFail("Correlation failed."); return }
+        XCTAssert(bitCorrelationResult.topKIndices(1)[0] == 4)
+    }
+    
+    
+    
 }
