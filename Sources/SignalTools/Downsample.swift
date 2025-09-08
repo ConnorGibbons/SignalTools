@@ -64,7 +64,7 @@ public class Downsampler {
         newData.append(contentsOf: data)
         let returnData = newData.dropFirst(self.currOffset)
         self.currOffset = returnData.count % decimationFactor
-        var contextIndex = returnData.count - (self.filter.count - 1)
+        var contextIndex = returnData.count - (self.filter.count / 2)
         self.realContext = Array(returnData[contextIndex..<returnData.count])
         return Array(returnData)
     }
@@ -90,7 +90,7 @@ public class Downsampler {
         newData.append(contentsOf: data)
         let returnData = newData.dropFirst(self.currOffset)
         self.currOffset = returnData.count % decimationFactor
-        var contextIndex = returnData.count - (self.filter.count - 1)
+        var contextIndex = returnData.count - (self.filter.count / 2)
         self.complexContext = Array(returnData[contextIndex..<returnData.count])
         return Array(returnData)
     }
