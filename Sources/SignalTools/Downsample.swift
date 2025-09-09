@@ -56,7 +56,7 @@ public class Downsampler {
         let outputLength = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
         var output = [Float](repeating: 0, count: outputLength)
         
-        self.currOffset = ((usableSampleCount + 1) * decimationFactor) - adjustedInput.count
+        self.currOffset = ((outputLength + 1) * decimationFactor) - adjustedInput.count
         let contextStartingPoint = adjustedInput.count - 1 - (filter.count - 1)
         self.realContext = Array(adjustedInput[contextStartingPoint..<adjustedInput.count])
         
@@ -81,7 +81,7 @@ public class Downsampler {
         let usableSampleCount = adjustedInput.count - (filter.count - 1)
         let outputLength = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
         
-        self.currOffset = ((usableSampleCount + 1) * decimationFactor) - adjustedInput.count
+        self.currOffset = ((outputLength + 1) * decimationFactor) - adjustedInput.count
         let contextStartingPoint = adjustedInput.count - 1 - (filter.count - 1)
         self.complexContext = Array(adjustedInput[contextStartingPoint..<adjustedInput.count])
         
