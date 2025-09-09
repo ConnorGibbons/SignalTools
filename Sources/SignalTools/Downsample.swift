@@ -79,12 +79,10 @@ public class Downsampler {
         var adjustedInput = consumeComplexContext()
         adjustedInput.append(contentsOf: input)
         adjustedInput = Array(adjustedInput.dropFirst(complexCurrOffset))
-        let outputLength = (adjustedInput.count - filter.count) / decimationFactor + 1
-        let usableSampleCount = adjustedInput.count - filter.count
-        
-        self.complexCurrOffset = ((outputLength + 1) * decimationFactor) - usableSampleCount
-        let contextStartingPoint = adjustedInput.count - 1 - (filter.count - 1)
-        self.complexContext = Array(adjustedInput[contextStartingPoint..<adjustedInput.count])
+        let usableSampleCount = adjustedInput.count - (filter.count - 1)
+        let numSamplesToKeep = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
+        let nextOffset = ((numSamplesToKeep + 1) * decimationFactor) - usableSampleCount
+        complexCurrOffset = nextOffset
         
         return SignalTools.downsampleComplex(iqData: adjustedInput, decimationFactor: self.decimationFactor, filter: self.filter)
     }
