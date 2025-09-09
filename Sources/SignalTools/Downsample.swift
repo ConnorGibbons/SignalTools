@@ -15,8 +15,8 @@ public class Downsampler {
     // State
     private var realContext: [Float]
     private var complexContext: [DSPComplex]
-    private var realCurrOffset: Int = 0
-    private var complexCurrOffset: Int = 0
+    private var realSkipCount: Int
+    private var complexSkipCount: Int
     
     public init?(inputSampleRate: Int, outputSampleRate: Int, filter: [Float]) {
         guard inputSampleRate > outputSampleRate, inputSampleRate % outputSampleRate == 0 else {
@@ -24,6 +24,8 @@ public class Downsampler {
             return nil
         }
         self.decimationFactor = inputSampleRate / outputSampleRate
+        self.realSkipCount = 0
+        self.complexSkipCount = 0
         self.filter = filter
         realContext = []
         complexContext = []
@@ -35,6 +37,8 @@ public class Downsampler {
             return nil
         }
         self.decimationFactor = inputSampleRate / outputSampleRate
+        self.realSkipCount = 0
+        self.complexSkipCount = 0
         do {
             self.filter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(outputSampleRate) / 2.0, sampleRate: inputSampleRate, tapsLength: 15).getTaps()
         }
@@ -45,50 +49,80 @@ public class Downsampler {
         complexContext = []
     }
     
-    public func downsampleReal(_ input: [Float]) -> [Float]? {
-        guard input.count >= (decimationFactor) else {
-            print("Downsample input not long enough.")
-            return nil
+    public func downsampleReal(_ input: [Float]) -> [Float] {
+        let context = consumeRealContext()
+        var inputWithContext = context; inputWithContext.append(contentsOf: input)
+        var inputWithContextAndPhaseAdjustment = Array(inputWithContext.dropFirst(realSkipCount))
+        let usableSampleCount = inputWithContextAndPhaseAdjustment.count - (filter.count - 1)
+        let totalSampleCount = inputWithContextAndPhaseAdjustment.count
+        print("Input size: \(input.count)")
+        print("Context size: \(context.count)")
+        print("Skip count (real): \(realSkipCount)")
+        print("Total sample count (after adjustment): \(totalSampleCount)")
+        debugPrintWithHighlights(inputWithContextAndPhaseAdjustment, mod: decimationFactor)
+        guard totalSampleCount >= filter.count else { // Not enough samples, just add context (don't modify phase) and go next
+            print("Output size: 0")
+            print("\n\n\n")
+            realContext = inputWithContext
+            return []
         }
-        var adjustedInput = consumeRealContext()
-        adjustedInput.append(contentsOf: input)
-        adjustedInput = Array(adjustedInput.dropFirst(realCurrOffset))
-        let usableSampleCount = adjustedInput.count - (filter.count - 1)
-        let outputLength = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
-        var output = [Float](repeating: 0, count: outputLength)
         
-        self.realCurrOffset = ((outputLength + 1) * decimationFactor) - adjustedInput.count
-        let contextStartingPoint = adjustedInput.count - 1 - (filter.count - 1)
-        self.realContext = Array(adjustedInput[contextStartingPoint..<adjustedInput.count])
+        let expectedOutputCount = Int(ceil(Double(usableSampleCount) / Double(decimationFactor)))
+        print("Output size: \(expectedOutputCount)")
+        var output: [Float] = Array(repeating: 0, count: expectedOutputCount)
+        let contextStartIndex = inputWithContextAndPhaseAdjustment.count - (filter.count - 1)
+        self.realContext = Array(inputWithContextAndPhaseAdjustment[contextStartIndex...])
         
-        vDSP_desamp(&adjustedInput, vDSP_Stride(decimationFactor), &self.filter, &output, vDSP_Length(outputLength), vDSP_Length(filter.count))
+        self.realSkipCount = (expectedOutputCount * decimationFactor) - usableSampleCount // Gets the index of what would be the next sample point, finds what that index would be in the next call w/ buffer prepended. Uses this as the next starting point.
+        print("Setting phase to: \(realSkipCount) (output: \(expectedOutputCount), decimation: \(decimationFactor), usable samples: \(usableSampleCount))")
+        
+        vDSP_desamp(&inputWithContextAndPhaseAdjustment, vDSP_Stride(decimationFactor), &self.filter, &output, vDSP_Length(expectedOutputCount), vDSP_Length(filter.count))
+        print("Output: \(output)")
+        print("\n\n\n")
         return output
     }
     
+    private func debugPrintWithHighlights(_ arr: [Float], mod: Int) {
+        var outputString = "["
+        for i in arr.enumerated() {
+            if(i.offset % mod == 0) {
+                outputString += "**\(i.element)**,"
+            } else { outputString += "\(i.element),"}
+        }
+        outputString += "]"
+        print(outputString)
+    }
+    
     private func consumeRealContext() -> [Float] {
-        var returnVal = self.realContext
+        let returnVal = self.realContext
         self.realContext = []
         return returnVal
     }
     
     public func downsampleComplex(_ input: [DSPComplex]) -> [DSPComplex]? {
-        guard input.count >= decimationFactor else {
-            print("Downsample input not long enough.")
-            return nil
-        }
-        var adjustedInput = consumeComplexContext()
-        adjustedInput.append(contentsOf: input)
-        adjustedInput = Array(adjustedInput.dropFirst(complexCurrOffset))
-        let usableSampleCount = adjustedInput.count - (filter.count - 1)
-        let numSamplesToKeep = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
-        let nextOffset = ((numSamplesToKeep + 1) * decimationFactor) - usableSampleCount
-        complexCurrOffset = nextOffset
+        let context = consumeComplexContext()
+        var inputWithContext = context; inputWithContext.append(contentsOf: input)
+        var inputWithContextAndPhaseAdjustment = Array(inputWithContext.dropFirst(complexSkipCount))
+        let usableSampleCount = inputWithContextAndPhaseAdjustment.count - (filter.count - 1)
+        let totalSampleCount = inputWithContextAndPhaseAdjustment.count
         
-        return SignalTools.downsampleComplex(iqData: adjustedInput, decimationFactor: self.decimationFactor, filter: self.filter)
+        guard totalSampleCount >= filter.count else { // Not enough samples, just add context (don't modify phase) and go next
+            complexContext = inputWithContext
+            return []
+        }
+        
+        let expectedOutputCount = Int(ceil(Double(usableSampleCount) / Double(decimationFactor)))
+        let contextStartIndex = inputWithContextAndPhaseAdjustment.count - (filter.count - 1)
+        self.complexContext = Array(inputWithContextAndPhaseAdjustment[contextStartIndex...])
+        
+        self.complexSkipCount = (expectedOutputCount * decimationFactor) - usableSampleCount // Gets the index of what would be the next sample point, finds what that index would be in the next call w/ buffer prepended. Uses this as the next starting point.
+        print("Setting phase to: \(realSkipCount) (output: \(expectedOutputCount), decimation: \(decimationFactor), usable samples: \(usableSampleCount))")
+        
+        return SignalTools.downsampleComplex(iqData: inputWithContextAndPhaseAdjustment, decimationFactor: self.decimationFactor, filter: self.filter)
     }
     
     private func consumeComplexContext() -> [DSPComplex] {
-        var returnVal = self.complexContext
+        let returnVal = self.complexContext
         self.complexContext = []
         return returnVal
     }

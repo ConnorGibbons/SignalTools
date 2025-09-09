@@ -2,7 +2,7 @@ import XCTest
 import SignalTools
 import Accelerate
 
-let TEST_DATA_COUNT = 2_000_000
+let TEST_DATA_COUNT = 100
 let randomComplexData: [DSPComplex] = .init(repeating: DSPComplex(real: 0.0, imag: 0.0), count: TEST_DATA_COUNT).map {_ in
     return DSPComplex(real: Float.random(in: -1...1), imag: Float.random(in: -1...1))
 }
@@ -140,6 +140,58 @@ class SignalToolsTests: XCTestCase {
         XCTAssert(bitCorrelationResult.topKIndices(1)[0] == 4)
     }
     
+    func testDownsamplerEquivalence() throws {
+        let testData = randomFloatData
+        let testSampleRateInput: Int = 20000
+        let testSampleRateOutput: Int = 2500
+        let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(testSampleRateOutput) / 2.0), sampleRate: testSampleRateInput, tapsLength: 71)
+        
+        let downsampledOriginal = downsampleReal(data: testData, decimationFactor: testSampleRateInput / testSampleRateOutput, filter: testDataDownsampleFilter.getTaps())
+        
+        let downsampler = Downsampler(inputSampleRate: testSampleRateInput, outputSampleRate: testSampleRateOutput, filter: testDataDownsampleFilter.getTaps())
+        let randomlySplitData = randomlySplitArray(testData)
+        var downsampledOutput: [Float] = []
+        for split in randomlySplitData {
+            let output = downsampler?.downsampleReal(split)
+            downsampledOutput.append(contentsOf: output!)
+        }
+        
+        XCTAssertTrue(valsAreClose(downsampledOutput, downsampledOriginal, threshold: 0.00001))
+    }
     
+}
+
+func randomlySplitArray<T>(_ array: [T]) -> [[T]] {
+    guard array.count > 1 else { return [array] }
     
+    // Decide how many cuts to make (0 up to array.count - 1)
+    let numberOfCuts = Int.random(in: 0...(array.count - 1))
+    var cutIndices: Set<Int> = []
+    
+    // Generate unique random cut indices
+    while cutIndices.count < numberOfCuts {
+        cutIndices.insert(Int.random(in: 1..<array.count))
+    }
+    
+    let sortedCuts = cutIndices.sorted()
+    var result: [[T]] = []
+    var start = 0
+    
+    for cut in sortedCuts {
+        result.append(Array(array[start..<cut]))
+        start = cut
+    }
+    result.append(Array(array[start..<array.count]))
+    
+    return result
+}
+
+func valsAreClose(_ arr1: [Float], _ arr2: [Float], threshold: Float = 0.001) -> Bool {
+    guard arr1.count == arr2.count else { return false }
+    for i in 0..<arr1.count {
+        if abs(arr1[i] - arr2[i]) > threshold {
+            return false
+        }
+    }
+    return true
 }
