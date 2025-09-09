@@ -15,7 +15,8 @@ public class Downsampler {
     // State
     private var realContext: [Float]
     private var complexContext: [DSPComplex]
-    private var currOffset: Int = 0
+    private var realCurrOffset: Int = 0
+    private var complexCurrOffset: Int = 0
     
     public init?(inputSampleRate: Int, outputSampleRate: Int, filter: [Float]) {
         guard inputSampleRate > outputSampleRate, inputSampleRate % outputSampleRate == 0 else {
@@ -51,12 +52,12 @@ public class Downsampler {
         }
         var adjustedInput = consumeRealContext()
         adjustedInput.append(contentsOf: input)
-        adjustedInput = Array(adjustedInput.dropFirst(currOffset))
+        adjustedInput = Array(adjustedInput.dropFirst(realCurrOffset))
         let usableSampleCount = adjustedInput.count - (filter.count - 1)
         let outputLength = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
         var output = [Float](repeating: 0, count: outputLength)
         
-        self.currOffset = ((outputLength + 1) * decimationFactor) - adjustedInput.count
+        self.realCurrOffset = ((outputLength + 1) * decimationFactor) - adjustedInput.count
         let contextStartingPoint = adjustedInput.count - 1 - (filter.count - 1)
         self.realContext = Array(adjustedInput[contextStartingPoint..<adjustedInput.count])
         
@@ -77,11 +78,11 @@ public class Downsampler {
         }
         var adjustedInput = consumeComplexContext()
         adjustedInput.append(contentsOf: input)
-        adjustedInput = Array(adjustedInput.dropFirst(currOffset))
-        let usableSampleCount = adjustedInput.count - (filter.count - 1)
-        let outputLength = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
+        adjustedInput = Array(adjustedInput.dropFirst(complexCurrOffset))
+        let outputLength = (adjustedInput.count - filter.count) / decimationFactor + 1
+        let usableSampleCount = adjustedInput.count - filter.count
         
-        self.currOffset = ((outputLength + 1) * decimationFactor) - adjustedInput.count
+        self.complexCurrOffset = ((outputLength + 1) * decimationFactor) - usableSampleCount
         let contextStartingPoint = adjustedInput.count - 1 - (filter.count - 1)
         self.complexContext = Array(adjustedInput[contextStartingPoint..<adjustedInput.count])
         
