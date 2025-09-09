@@ -45,28 +45,23 @@ public class Downsampler {
     }
     
     public func downsampleReal(_ input: [Float]) -> [Float]? {
-        guard input.count >= (decimationFactor), input.count > filter.count else {
+        guard input.count >= (decimationFactor) else {
             print("Downsample input not long enough.")
             return nil
         }
-        var inputAdjusted = adjustData(input)
-        var output: [Float] = []
-        let outputLength = inputAdjusted.count / decimationFactor
-        output.reserveCapacity(outputLength)
+        var adjustedInput = input
+        adjustedInput.append(contentsOf: consumeRealContext())
+        adjustedInput = Array(adjustedInput.dropFirst(currOffset))
+        let usableSampleCount = adjustedInput.count - (filter.count - 1)
+        let outputLength = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
+        var output = [Float](repeating: 0, count: outputLength)
         
-        vDSP_desamp(&inputAdjusted, vDSP_Stride(decimationFactor), &self.filter, &output, vDSP_Length(outputLength), vDSP_Length(filter.count))
+        self.currOffset = ((usableSampleCount + 1) * decimationFactor) - adjustedInput.count
+        let contextStartingPoint = adjustedInput.count - 1 - (filter.count - 1)
+        self.realContext = Array(adjustedInput[contextStartingPoint..<adjustedInput.count])
+        
+        vDSP_desamp(&adjustedInput, vDSP_Stride(decimationFactor), &self.filter, &output, vDSP_Length(outputLength), vDSP_Length(filter.count))
         return output
-    }
-    
-    /// Add context buffer to input & adjust starting sample by offset.
-    private func adjustData(_ data: [Float]) -> [Float] {
-        var newData = consumeRealContext()
-        newData.append(contentsOf: data)
-        let returnData = newData.dropFirst(self.currOffset)
-        self.currOffset = returnData.count % decimationFactor
-        var contextIndex = returnData.count - (self.filter.count / 2)
-        self.realContext = Array(returnData[contextIndex..<returnData.count])
-        return Array(returnData)
     }
     
     private func consumeRealContext() -> [Float] {
@@ -76,23 +71,21 @@ public class Downsampler {
     }
     
     public func downsampleComplex(_ input: [DSPComplex]) -> [DSPComplex]? {
-        guard input.count >= decimationFactor, input.count > filter.count else {
+        guard input.count >= decimationFactor else {
             print("Downsample input not long enough.")
             return nil
         }
-        var inputAdjusted = adjustData(input)
+        var adjustedInput = input
+        adjustedInput.append(contentsOf: consumeComplexContext())
+        adjustedInput = Array(adjustedInput.dropFirst(currOffset))
+        let usableSampleCount = adjustedInput.count - (filter.count - 1)
+        let outputLength = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
         
-        return SignalTools.downsampleComplex(iqData: inputAdjusted, decimationFactor: self.decimationFactor, filter: self.filter)
-    }
-    
-    private func adjustData(_ data: [DSPComplex]) -> [DSPComplex] {
-        var newData = consumeComplexContext()
-        newData.append(contentsOf: data)
-        let returnData = newData.dropFirst(self.currOffset)
-        self.currOffset = returnData.count % decimationFactor
-        var contextIndex = returnData.count - (self.filter.count / 2)
-        self.complexContext = Array(returnData[contextIndex..<returnData.count])
-        return Array(returnData)
+        self.currOffset = ((usableSampleCount + 1) * decimationFactor) - adjustedInput.count
+        let contextStartingPoint = adjustedInput.count - 1 - (filter.count - 1)
+        self.complexContext = Array(adjustedInput[contextStartingPoint..<adjustedInput.count])
+        
+        return SignalTools.downsampleComplex(iqData: adjustedInput, decimationFactor: self.decimationFactor, filter: self.filter)
     }
     
     private func consumeComplexContext() -> [DSPComplex] {
