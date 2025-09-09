@@ -49,8 +49,8 @@ public class Downsampler {
             print("Downsample input not long enough.")
             return nil
         }
-        var adjustedInput = input
-        adjustedInput.append(contentsOf: consumeRealContext())
+        var adjustedInput = consumeRealContext()
+        adjustedInput.append(contentsOf: input)
         adjustedInput = Array(adjustedInput.dropFirst(currOffset))
         let usableSampleCount = adjustedInput.count - (filter.count - 1)
         let outputLength = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
@@ -75,8 +75,8 @@ public class Downsampler {
             print("Downsample input not long enough.")
             return nil
         }
-        var adjustedInput = input
-        adjustedInput.append(contentsOf: consumeComplexContext())
+        var adjustedInput = consumeComplexContext()
+        adjustedInput.append(contentsOf: input)
         adjustedInput = Array(adjustedInput.dropFirst(currOffset))
         let usableSampleCount = adjustedInput.count - (filter.count - 1)
         let outputLength = Int(floor(Double(usableSampleCount) / Double(decimationFactor)))
