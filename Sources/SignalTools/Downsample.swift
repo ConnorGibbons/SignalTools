@@ -55,30 +55,19 @@ public class Downsampler {
         var inputWithContextAndPhaseAdjustment = Array(inputWithContext.dropFirst(realSkipCount))
         let usableSampleCount = inputWithContextAndPhaseAdjustment.count - (filter.count - 1)
         let totalSampleCount = inputWithContextAndPhaseAdjustment.count
-        print("Input size: \(input.count)")
-        print("Context size: \(context.count)")
-        print("Skip count (real): \(realSkipCount)")
-        print("Total sample count (after adjustment): \(totalSampleCount)")
-        debugPrintWithHighlights(inputWithContextAndPhaseAdjustment, mod: decimationFactor)
         guard totalSampleCount >= filter.count else { // Not enough samples, just add context (don't modify phase) and go next
-            print("Output size: 0")
-            print("\n\n\n")
             realContext = inputWithContext
             return []
         }
         
         let expectedOutputCount = Int(ceil(Double(usableSampleCount) / Double(decimationFactor)))
-        print("Output size: \(expectedOutputCount)")
         var output: [Float] = Array(repeating: 0, count: expectedOutputCount)
         let contextStartIndex = inputWithContextAndPhaseAdjustment.count - (filter.count - 1)
         self.realContext = Array(inputWithContextAndPhaseAdjustment[contextStartIndex...])
         
         self.realSkipCount = (expectedOutputCount * decimationFactor) - usableSampleCount // Gets the index of what would be the next sample point, finds what that index would be in the next call w/ buffer prepended. Uses this as the next starting point.
-        print("Setting phase to: \(realSkipCount) (output: \(expectedOutputCount), decimation: \(decimationFactor), usable samples: \(usableSampleCount))")
         
         vDSP_desamp(&inputWithContextAndPhaseAdjustment, vDSP_Stride(decimationFactor), &self.filter, &output, vDSP_Length(expectedOutputCount), vDSP_Length(filter.count))
-        print("Output: \(output)")
-        print("\n\n\n")
         return output
     }
     
@@ -102,7 +91,7 @@ public class Downsampler {
     public func downsampleComplex(_ input: [DSPComplex]) -> [DSPComplex]? {
         let context = consumeComplexContext()
         var inputWithContext = context; inputWithContext.append(contentsOf: input)
-        var inputWithContextAndPhaseAdjustment = Array(inputWithContext.dropFirst(complexSkipCount))
+        let inputWithContextAndPhaseAdjustment = Array(inputWithContext.dropFirst(complexSkipCount))
         let usableSampleCount = inputWithContextAndPhaseAdjustment.count - (filter.count - 1)
         let totalSampleCount = inputWithContextAndPhaseAdjustment.count
         
@@ -116,7 +105,6 @@ public class Downsampler {
         self.complexContext = Array(inputWithContextAndPhaseAdjustment[contextStartIndex...])
         
         self.complexSkipCount = (expectedOutputCount * decimationFactor) - usableSampleCount // Gets the index of what would be the next sample point, finds what that index would be in the next call w/ buffer prepended. Uses this as the next starting point.
-        print("Setting phase to: \(realSkipCount) (output: \(expectedOutputCount), decimation: \(decimationFactor), usable samples: \(usableSampleCount))")
         
         return SignalTools.downsampleComplex(iqData: inputWithContextAndPhaseAdjustment, decimationFactor: self.decimationFactor, filter: self.filter)
     }
@@ -130,18 +118,24 @@ public class Downsampler {
 }
 
 public func downsampleComplex(iqData: [DSPComplex], decimationFactor: Int, filter: [Float] = [0.5, 0.5]) -> [DSPComplex] {
-    let iqDataCopy = iqData
-    var returnVector: [DSPComplex] = .init(repeating: DSPComplex(real: 0, imag: 0), count: iqDataCopy.count / decimationFactor)
-    var splitComplexData = DSPSplitComplex(realp: .allocate(capacity: iqDataCopy.count), imagp: .allocate(capacity: iqDataCopy.count))
+    guard iqData.count > (filter.count - 1) else { // Less data than is needed to apply the filter, thus no output.
+        return []
+    }
+    let usableSamplesCount = iqData.count - (filter.count - 1) // Samples with enough proceeding samples to apply the filter.
+    let outputCount = max(usableSamplesCount / decimationFactor, 1)
+    
+    var returnVector: [DSPComplex]
+    var splitComplexData = DSPSplitComplex(realp: .allocate(capacity: iqData.count), imagp: .allocate(capacity: iqData.count))
     defer {
         splitComplexData.realp.deallocate()
         splitComplexData.imagp.deallocate()
     }
-    vDSP.convert(interleavedComplexVector: iqDataCopy, toSplitComplexVector: &splitComplexData)
-    let iBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.realp, count: iqDataCopy.count)
-    let qBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.imagp, count: iqDataCopy.count)
+    vDSP.convert(interleavedComplexVector: iqData, toSplitComplexVector: &splitComplexData)
+    let iBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.realp, count: iqData.count)
+    let qBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.imagp, count: iqData.count)
     var iBranchDownsampled = vDSP.downsample(iBranchBufferPointer, decimationFactor: decimationFactor, filter: filter)
     var qBranchDownsampled = vDSP.downsample(qBranchBufferPointer, decimationFactor: decimationFactor, filter: filter)
+    returnVector = .init(repeating: DSPComplex(real: 0, imag: 0), count: iBranchDownsampled.count)
     return iBranchDownsampled.withUnsafeMutableBufferPointer { iDownsampledBufferPointer in
         qBranchDownsampled.withUnsafeMutableBufferPointer { qDownsampledBufferPointer in
             let splitDownsampledData = DSPSplitComplex(realp: iDownsampledBufferPointer.baseAddress!, imagp: qDownsampledBufferPointer.baseAddress!)

@@ -2,7 +2,7 @@ import XCTest
 import SignalTools
 import Accelerate
 
-let TEST_DATA_COUNT = 100
+let TEST_DATA_COUNT = 100_000
 let randomComplexData: [DSPComplex] = .init(repeating: DSPComplex(real: 0.0, imag: 0.0), count: TEST_DATA_COUNT).map {_ in
     return DSPComplex(real: Float.random(in: -1...1), imag: Float.random(in: -1...1))
 }
@@ -140,15 +140,19 @@ class SignalToolsTests: XCTestCase {
         XCTAssert(bitCorrelationResult.topKIndices(1)[0] == 4)
     }
     
-    func testDownsamplerEquivalence() throws {
+    func testRealDownsamplerEquivalence() throws {
         let testData = randomFloatData
-        let testSampleRateInput: Int = 20000
-        let testSampleRateOutput: Int = 2500
-        let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(testSampleRateOutput) / 2.0), sampleRate: testSampleRateInput, tapsLength: 71)
+        let randomDecimationFactor = Int.random(in: 1...100)
+        let randomOutputSampleRate = Int.random(in: 1...48000)
+        let randomInputSampleRate = randomOutputSampleRate * randomDecimationFactor
+        let randomTapsCount = Int.random(in: 1...151) | 1
+        print("Decimation factor: \(randomDecimationFactor) \nOutput sample rate: \(randomOutputSampleRate) \nInput sample rate: \(randomInputSampleRate) \nTaps count: \(randomTapsCount)")
         
-        let downsampledOriginal = downsampleReal(data: testData, decimationFactor: testSampleRateInput / testSampleRateOutput, filter: testDataDownsampleFilter.getTaps())
+        let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(randomOutputSampleRate) / 2.0), sampleRate: randomInputSampleRate, tapsLength: randomTapsCount)
         
-        let downsampler = Downsampler(inputSampleRate: testSampleRateInput, outputSampleRate: testSampleRateOutput, filter: testDataDownsampleFilter.getTaps())
+        let downsampledOriginal = downsampleReal(data: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
+        
+        let downsampler = Downsampler(inputSampleRate: randomInputSampleRate, outputSampleRate: randomOutputSampleRate, filter: testDataDownsampleFilter.getTaps())
         let randomlySplitData = randomlySplitArray(testData)
         var downsampledOutput: [Float] = []
         for split in randomlySplitData {
@@ -157,6 +161,32 @@ class SignalToolsTests: XCTestCase {
         }
         
         XCTAssertTrue(valsAreClose(downsampledOutput, downsampledOriginal, threshold: 0.00001))
+    }
+    
+    func testComplexDownsamplerEquivalence() throws {
+        let testData = randomComplexData
+        let randomDecimationFactor = Int.random(in: 1...100)
+        let randomOutputSampleRate = Int.random(in: 1...48000)
+        let randomInputSampleRate = randomOutputSampleRate * randomDecimationFactor
+        let randomTapsCount = Int.random(in: 1...151) | 1
+        print("Decimation factor: \(randomDecimationFactor) \nOutput sample rate: \(randomOutputSampleRate) \nInput sample rate: \(randomInputSampleRate) \nTaps count: \(randomTapsCount)")
+        
+        let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(randomOutputSampleRate) / 2.0), sampleRate: randomInputSampleRate, tapsLength: randomTapsCount)
+        
+        let downsampledOriginal = downsampleComplex(iqData: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
+        
+        let downsampler = Downsampler(inputSampleRate: randomInputSampleRate, outputSampleRate: randomOutputSampleRate, filter: testDataDownsampleFilter.getTaps())
+        let randomlySplitData = randomlySplitArray(testData)
+        var downsampledOutput: [DSPComplex] = []
+        for split in randomlySplitData {
+            let output = downsampler?.downsampleComplex(split)
+            downsampledOutput.append(contentsOf: output!)
+        }
+        
+        print(downsampledOutput.count)
+        print(downsampledOriginal.count)
+        
+        XCTAssertTrue(valsAreClose(downsampledOutput, downsampledOriginal, threshold: 0.001))
     }
     
 }
@@ -190,6 +220,19 @@ func valsAreClose(_ arr1: [Float], _ arr2: [Float], threshold: Float = 0.001) ->
     guard arr1.count == arr2.count else { return false }
     for i in 0..<arr1.count {
         if abs(arr1[i] - arr2[i]) > threshold {
+            return false
+        }
+    }
+    return true
+}
+
+func valsAreClose(_ arr1: [DSPComplex],_ arr2: [DSPComplex], threshold: Float = 0.001) -> Bool {
+    guard arr1.count == arr2.count else { return false }
+    for i in 0..<arr1.count {
+        if abs(arr1[i].imag - arr2[i].imag) > threshold {
+            return false
+        }
+        if abs(arr1[i].real - arr2[i].real) > threshold {
             return false
         }
     }
