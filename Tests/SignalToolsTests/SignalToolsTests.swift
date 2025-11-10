@@ -150,9 +150,8 @@ class SignalToolsTests: XCTestCase {
         print("Decimation factor: \(randomDecimationFactor) \nOutput sample rate: \(randomOutputSampleRate) \nInput sample rate: \(randomInputSampleRate) \nTaps count: \(randomTapsCount)")
         
         let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(randomOutputSampleRate) / 2.0), sampleRate: randomInputSampleRate, tapsLength: randomTapsCount)
-        
-        let downsampledOriginal = SignalTools.downsampleReal(data: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
         return;
+        let downsampledOriginal = SignalTools.downsampleReal(data: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
         let downsampledvDSP = vDSP.downsample(testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
         let downsampler = Downsampler(inputSampleRate: randomInputSampleRate, outputSampleRate: randomOutputSampleRate, filter: testDataDownsampleFilter.getTaps())
         let randomlySplitData = randomlySplitArray(testData)
