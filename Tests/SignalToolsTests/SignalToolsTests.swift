@@ -145,7 +145,12 @@ class SignalToolsTests: XCTestCase {
         let randomDecimationFactor = Int.random(in: 2...100)
         let randomOutputSampleRate = Int.random(in: 100...48000)
         let randomInputSampleRate = randomOutputSampleRate * randomDecimationFactor
-        let randomTapsCount = Int.random(in: 3...151) | 1
+        let randomTapsCount: Int
+        if #available(macOS 14, *) {
+            randomTapsCount = Int.random(in: 3...151) | 1
+        } else {
+            randomTapsCount = randomDecimationFactor * Int.random(in: 1...10)
+        }
         print("Decimation factor: \(randomDecimationFactor) \nOutput sample rate: \(randomOutputSampleRate) \nInput sample rate: \(randomInputSampleRate) \nTaps count: \(randomTapsCount)")
         
         let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(randomOutputSampleRate) / 2.0), sampleRate: randomInputSampleRate, tapsLength: randomTapsCount)
