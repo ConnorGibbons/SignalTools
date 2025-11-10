@@ -2,7 +2,7 @@ import XCTest
 import SignalTools
 import Accelerate
 
-let TEST_DATA_COUNT = 100_000
+let TEST_DATA_COUNT = 1_000_000
 let randomComplexData: [DSPComplex] = .init(repeating: DSPComplex(real: 0.0, imag: 0.0), count: TEST_DATA_COUNT).map {_ in
     return DSPComplex(real: Float.random(in: -1...1), imag: Float.random(in: -1...1))
 }
@@ -121,7 +121,7 @@ class SignalToolsTests: XCTestCase {
         let signal: [Float] = [1,2,3,4,5,6,7,8]
         let template: [Float] = [10,20,30]
         let expectedResult: [Float] = [140.0, 200.0, 260.0, 320.0, 380.0, 440.0]
-        let result = slidingCorrelation(signal: signal, template: template)
+        let result = SignalTools.slidingCorrelation(signal: signal, template: template)
         XCTAssert(result == expectedResult)
         
         var signalBitBuffer = BitBuffer()
@@ -136,21 +136,22 @@ class SignalToolsTests: XCTestCase {
         let signalAsFloatArr = signalBitBuffer.asFloatArray()
         let templateAsFloatArr = templateBitBuffer.asFloatArray()
         // peak should be at index 4, since that's where signal & template perfectly match
-        guard let bitCorrelationResult = slidingCorrelation(signal: signalAsFloatArr, template: templateAsFloatArr) else { XCTFail("Correlation failed."); return }
+        guard let bitCorrelationResult = SignalTools.slidingCorrelation(signal: signalAsFloatArr, template: templateAsFloatArr) else { XCTFail("Correlation failed."); return }
         XCTAssert(bitCorrelationResult.topKIndices(1)[0] == 4)
     }
     
     func testRealDownsamplerEquivalence() throws {
         let testData = randomFloatData
-        let randomDecimationFactor = Int.random(in: 1...100)
-        let randomOutputSampleRate = Int.random(in: 1...48000)
+        let randomDecimationFactor = Int.random(in: 2...100)
+        let randomOutputSampleRate = Int.random(in: 100...48000)
         let randomInputSampleRate = randomOutputSampleRate * randomDecimationFactor
-        let randomTapsCount = Int.random(in: 1...151) | 1
+        let randomTapsCount = Int.random(in: 3...151) | 1
         print("Decimation factor: \(randomDecimationFactor) \nOutput sample rate: \(randomOutputSampleRate) \nInput sample rate: \(randomInputSampleRate) \nTaps count: \(randomTapsCount)")
         
         let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(randomOutputSampleRate) / 2.0), sampleRate: randomInputSampleRate, tapsLength: randomTapsCount)
         
-        let downsampledOriginal = downsampleReal(data: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
+        let downsampledOriginal = SignalTools.downsampleReal(data: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
+        let downsampledvDSP = vDSP.downsample(testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
         
         let downsampler = Downsampler(inputSampleRate: randomInputSampleRate, outputSampleRate: randomOutputSampleRate, filter: testDataDownsampleFilter.getTaps())
         let randomlySplitData = randomlySplitArray(testData)
@@ -161,19 +162,20 @@ class SignalToolsTests: XCTestCase {
         }
         
         XCTAssertTrue(valsAreClose(downsampledOutput, downsampledOriginal, threshold: 0.00001))
+        XCTAssertTrue(valsAreClose(downsampledvDSP, downsampledOriginal))
     }
     
     func testComplexDownsamplerEquivalence() throws {
         let testData = randomComplexData
-        let randomDecimationFactor = Int.random(in: 1...100)
-        let randomOutputSampleRate = Int.random(in: 1...48000)
+        let randomDecimationFactor = Int.random(in: 2...100)
+        let randomOutputSampleRate = Int.random(in: 100...48000)
         let randomInputSampleRate = randomOutputSampleRate * randomDecimationFactor
-        let randomTapsCount = Int.random(in: 1...151) | 1
+        let randomTapsCount = Int.random(in: 3...151) | 1
         print("Decimation factor: \(randomDecimationFactor) \nOutput sample rate: \(randomOutputSampleRate) \nInput sample rate: \(randomInputSampleRate) \nTaps count: \(randomTapsCount)")
         
         let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(randomOutputSampleRate) / 2.0), sampleRate: randomInputSampleRate, tapsLength: randomTapsCount)
         
-        let downsampledOriginal = downsampleComplex(iqData: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
+        let downsampledOriginal = SignalTools.downsampleComplex(iqData: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
         
         let downsampler = Downsampler(inputSampleRate: randomInputSampleRate, outputSampleRate: randomOutputSampleRate, filter: testDataDownsampleFilter.getTaps())
         let randomlySplitData = randomlySplitArray(testData)

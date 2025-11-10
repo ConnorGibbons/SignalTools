@@ -114,15 +114,16 @@ public class Downsampler {
         self.complexContext = []
         return returnVal
     }
-
+    
 }
+
 
 public func downsampleComplex(iqData: [DSPComplex], decimationFactor: Int, filter: [Float] = [0.5, 0.5]) -> [DSPComplex] {
     guard iqData.count > (filter.count - 1) else { // Less data than is needed to apply the filter, thus no output.
         return []
     }
     let usableSamplesCount = iqData.count - (filter.count - 1) // Samples with enough proceeding samples to apply the filter.
-    let outputCount = max(usableSamplesCount / decimationFactor, 1)
+    // let outputCount = max(usableSamplesCount / decimationFactor, 1)
     
     var returnVector: [DSPComplex]
     var splitComplexData = DSPSplitComplex(realp: .allocate(capacity: iqData.count), imagp: .allocate(capacity: iqData.count))
