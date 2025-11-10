@@ -149,7 +149,7 @@ class SignalToolsTests: XCTestCase {
         if #available(macOS 14, *) {
             randomTapsCount = Int.random(in: 3...151) | 1
         } else {
-            randomTapsCount = randomDecimationFactor * Int.random(in: 1...10)
+            randomTapsCount = (randomDecimationFactor * Int.random(in: 1...10)) | 1
         }
         print("Decimation factor: \(randomDecimationFactor) \nOutput sample rate: \(randomOutputSampleRate) \nInput sample rate: \(randomInputSampleRate) \nTaps count: \(randomTapsCount)")
         
