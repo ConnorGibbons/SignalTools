@@ -149,9 +149,7 @@ class SignalToolsTests: XCTestCase {
         randomTapsCount = Int.random(in: 3...151) | 1
         print("Decimation factor: \(randomDecimationFactor) \nOutput sample rate: \(randomOutputSampleRate) \nInput sample rate: \(randomInputSampleRate) \nTaps count: \(randomTapsCount)")
         let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(randomOutputSampleRate) / 2.0), sampleRate: randomInputSampleRate, tapsLength: randomTapsCount)
-        let downsampledOriginal = SignalTools.downsampleRealX(data: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
-        return;
-        let downsampledvDSP = vDSP.downsample(testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
+        let downsampledFullPass = SignalTools.downsampleReal(data: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
         let downsampler = Downsampler(inputSampleRate: randomInputSampleRate, outputSampleRate: randomOutputSampleRate, filter: testDataDownsampleFilter.getTaps())
         let randomlySplitData = randomlySplitArray(testData)
         var downsampledOutput: [Float] = []
@@ -160,12 +158,10 @@ class SignalToolsTests: XCTestCase {
             downsampledOutput.append(contentsOf: output!)
         }
         
-        XCTAssertTrue(valsAreClose(downsampledOutput, downsampledOriginal, threshold: 0.00001))
-        XCTAssertTrue(valsAreClose(downsampledvDSP, downsampledOriginal))
+        XCTAssertTrue(valsAreClose(downsampledOutput, downsampledFullPass, threshold: 0.00001))
     }
     
     func testComplexDownsamplerEquivalence() throws {
-        return
         let testData = randomComplexData
         let randomDecimationFactor = Int.random(in: 2...100)
         let randomOutputSampleRate = Int.random(in: 100...48000)
@@ -175,8 +171,8 @@ class SignalToolsTests: XCTestCase {
         
         let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(randomOutputSampleRate) / 2.0), sampleRate: randomInputSampleRate, tapsLength: randomTapsCount)
         
-        let downsampledOriginal = SignalTools.downsampleComplex(iqData: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
-        
+//        let downsampledOriginal = SignalTools.downsampleComplexOLD(iqData: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
+        let downsampledFullPass = SignalTools.downsampleComplex(iqData: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
         let downsampler = Downsampler(inputSampleRate: randomInputSampleRate, outputSampleRate: randomOutputSampleRate, filter: testDataDownsampleFilter.getTaps())
         let randomlySplitData = randomlySplitArray(testData)
         var downsampledOutput: [DSPComplex] = []
@@ -186,9 +182,8 @@ class SignalToolsTests: XCTestCase {
         }
         
         print(downsampledOutput.count)
-        print(downsampledOriginal.count)
         
-        XCTAssertTrue(valsAreClose(downsampledOutput, downsampledOriginal, threshold: 0.001))
+        XCTAssertTrue(valsAreClose(downsampledOutput, downsampledFullPass, threshold: 0.001))
     }
     
 }
