@@ -156,35 +156,3 @@ public func downsampleReal(data: [Float], decimationFactor: Int, filter: [Float]
     
     return outputBuffer
 }
-
-public func downsampleComplexOLD(iqData: [DSPComplex], decimationFactor: Int, filter: [Float] = [0.5, 0.5]) -> [DSPComplex] {
-    guard iqData.count > (filter.count - 1) else { // Less data than is needed to apply the filter, thus no output.
-        return []
-    }
-    // let usableSamplesCount = iqData.count - (filter.count - 1) // Samples with enough proceeding samples to apply the filter.
-    // let outputCount = max(usableSamplesCount / decimationFactor, 1)
-    
-    var returnVector: [DSPComplex]
-    var splitComplexData = DSPSplitComplex(realp: .allocate(capacity: iqData.count), imagp: .allocate(capacity: iqData.count))
-    defer {
-        splitComplexData.realp.deallocate()
-        splitComplexData.imagp.deallocate()
-    }
-    vDSP.convert(interleavedComplexVector: iqData, toSplitComplexVector: &splitComplexData)
-    let iBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.realp, count: iqData.count)
-    let qBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.imagp, count: iqData.count)
-    var iBranchDownsampled = vDSP.downsample(iBranchBufferPointer, decimationFactor: decimationFactor, filter: filter)
-    var qBranchDownsampled = vDSP.downsample(qBranchBufferPointer, decimationFactor: decimationFactor, filter: filter)
-    returnVector = .init(repeating: DSPComplex(real: 0, imag: 0), count: iBranchDownsampled.count)
-    return iBranchDownsampled.withUnsafeMutableBufferPointer { iDownsampledBufferPointer in
-        qBranchDownsampled.withUnsafeMutableBufferPointer { qDownsampledBufferPointer in
-            let splitDownsampledData = DSPSplitComplex(realp: iDownsampledBufferPointer.baseAddress!, imagp: qDownsampledBufferPointer.baseAddress!)
-            vDSP.convert(splitComplexVector: splitDownsampledData, toInterleavedComplexVector: &returnVector)
-            return returnVector
-        }
-    }
-}
-
-public func downsampleRealOLD(data: [Float], decimationFactor: Int, filter: [Float] = [0.5, 0.5]) -> [Float] {
-    return vDSP.downsample(data, decimationFactor: decimationFactor, filter: filter)
-}
