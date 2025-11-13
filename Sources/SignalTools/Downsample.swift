@@ -149,3 +149,14 @@ public func downsampleComplex(iqData: [DSPComplex], decimationFactor: Int, filte
 public func downsampleReal(data: [Float], decimationFactor: Int, filter: [Float] = [0.5, 0.5]) -> [Float] {
     return vDSP.downsample(data, decimationFactor: decimationFactor, filter: filter)
 }
+
+public func downsampleRealX(data: [Float], decimationFactor: Int, filter: [Float] = [0.5, 0.5]) -> [Float] {
+    let outputCount = data.count / decimationFactor
+    var outputBuffer: [Float] = .init(repeating: 0.0, count: outputCount)
+    var dataMutableCopy: [Float] = data
+    var filterMutableCopy: [Float] = filter
+    
+    vDSP_desamp(&dataMutableCopy, vDSP_Stride(decimationFactor), &filterMutableCopy, &outputBuffer, vDSP_Length(outputCount), vDSP_Length(filter.count))
+    
+    return outputBuffer
+}
