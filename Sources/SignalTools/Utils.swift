@@ -5,11 +5,9 @@
 //  Created by Connor Gibbons  on 6/24/25.
 //
 
-import Accelerate
-
 // Frequency Shifting
 
-public func shiftFrequencyToBaseband(rawIQ: [DSPComplex], result: inout [DSPComplex], frequency: Float, sampleRate: Int) {
+public func shiftFrequencyToBaseband(rawIQ: [ComplexSignal], result: inout [ComplexSignal], frequency: Float, sampleRate: Int) {
     guard rawIQ.count == result.count else {
         return
     }
@@ -17,7 +15,7 @@ public func shiftFrequencyToBaseband(rawIQ: [DSPComplex], result: inout [DSPComp
     let sampleCount = rawIQ.count
     let complexMixerArray = (0..<sampleCount).map{ index in
         let angle = -2 * Float.pi * frequency * Float(index) / Float(sampleRate)
-        return DSPComplex(real: cos(angle), imag: sin(angle))
+        return ComplexSignal(real: cos(angle), imag: sin(angle))
     }
     
     var splitInputBuffer = DSPSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
@@ -40,7 +38,7 @@ public func shiftFrequencyToBaseband(rawIQ: [DSPComplex], result: inout [DSPComp
 
 /// I've found that without using Double internally, weird artifacts can occur.
 /// Fair warning, this is probably a lot slower than the regular shift to baseband function.
-public func shiftFrequencyToBasebandHighPrecision(rawIQ: [DSPComplex], result: inout [DSPComplex], frequency: Float, sampleRate: Int) {
+public func shiftFrequencyToBasebandHighPrecision(rawIQ: [ComplexSignal], result: inout [ComplexSignal], frequency: Float, sampleRate: Int) {
     guard rawIQ.count == result.count else {
         return
     }
@@ -103,7 +101,7 @@ public func radToFrequency(radDiffs: [Float], sampleRate: Int) -> [Float] {
 }
 
 /// Calculates angle (radians) for each entry in an array of IQ samples.
-public func calculateAngle(rawIQ: [DSPComplex], result: inout [Float]) {
+public func calculateAngle(rawIQ: [ComplexSignal], result: inout [Float]) {
     let sampleCount = rawIQ.count
     guard sampleCount == result.count && !rawIQ.isEmpty else {
         return
@@ -181,7 +179,7 @@ public func valsAreClose(_ arr1: [Float], _ arr2: [Float], threshold: Float = 0.
 }
 
 /// Determines if all elements at the same index across two arrays are within a provided threshold.
-public func valsAreClose(_ arr1: [DSPComplex],_ arr2: [DSPComplex], threshold: Float = 0.001) -> Bool {
+public func valsAreClose(_ arr1: [ComplexSignal],_ arr2: [ComplexSignal], threshold: Float = 0.001) -> Bool {
     guard arr1.count == arr2.count else { return false }
     for i in 0..<arr1.count {
         if abs(arr1[i].imag - arr2[i].imag) > threshold {

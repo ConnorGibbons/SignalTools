@@ -5,9 +5,6 @@
 //  Created by Connor Gibbons  on 6/24/25.
 //
 
-import Accelerate
-
-
 public class Downsampler {
     private var decimationFactor: Int
     private var filter: [Float]

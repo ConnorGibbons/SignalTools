@@ -7,9 +7,8 @@
 //  Code for demodulating signals modulated using frequency modulation.
 
 import Foundation
-import Accelerate
 
-/// This function will do FM demodulation, but much slower than demodulateFM or demodulateFMAlt
+/// This function will do FM demodulation, but much slower than demodulateFM 
 /// Here for conceptual understanding.
 public func demodulateFMSlow(_ samples: [DSPComplex]) -> [Float] {
     var diffs =  [Float].init(repeating: 0.0, count: samples.count - 1)

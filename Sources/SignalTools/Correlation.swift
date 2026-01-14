@@ -5,9 +5,6 @@
 //  Created by Connor Gibbons  on 8/27/25.
 //
 
-import Accelerate
-
-
 /// Takes in a signal &  a template to correlate, returns correlation values at each lag (offset from start)
 /// This is a convenience wrapper around vDSP\_conv
 public func slidingCorrelation(signal: [Float], template: [Float]) -> [Float]? {

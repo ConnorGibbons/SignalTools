@@ -1,6 +1,5 @@
 import XCTest
 import SignalTools
-import Accelerate
 
 let TEST_DATA_COUNT = 1_000_000
 let randomComplexData: [DSPComplex] = .init(repeating: DSPComplex(real: 0.0, imag: 0.0), count: TEST_DATA_COUNT).map {_ in

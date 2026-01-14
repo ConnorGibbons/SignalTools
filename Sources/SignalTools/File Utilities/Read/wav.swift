@@ -7,7 +7,6 @@
 //  Functions for reading data from .wav files.
 
 import Foundation
-import Accelerate
 
 /// Read IQ Samples from a .wav where samples are stored as 16-bit integers.
 /// Samples are expected to be interleaved IQ.

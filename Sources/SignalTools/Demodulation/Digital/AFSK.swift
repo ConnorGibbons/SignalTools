@@ -9,7 +9,6 @@
 //  AFSK modulated signals, after FM demodulation, will look like audio waveforms.
 
 import Foundation
-import Accelerate
 
 public struct BitBuffer {
     // Buffers filled left to right
@@ -135,7 +134,7 @@ public func afskDemodulate(samples: [Float], sampleRate: Int, baud: Int, markFre
 /// This version takes in mark & space frequencies instead as computed coefficients (see 'coeff' in goertzelPower) to avoid recomputing when calling this function multiple times.
 /// Outputs: BitBuffer (see struct) and a [Float] contianing the confidence with which each bit was chosen. 'confidence' refers to the difference in Goertzel power.
 public func afskDemodulate(samples: [Float], sampleRate: Int, baud: Int, markCoeff: Float, spaceCoeff: Float) -> (BitBuffer, [Float])? {
-    let nyquistFreq: Float = Float(sampleRate) / 2.0
+    // let nyquistFreq: Float = Float(sampleRate) / 2.0
     guard sampleRate % baud == 0 else {
         print("Error: sampleRate must be an integer multiple of baud.")
         return nil

@@ -4,11 +4,10 @@
 //
 //  Created by Connor Gibbons  on 4/21/25.
 //
-import Accelerate
 
 public protocol Filter {
     func filteredSignal( _ input: inout [Float])
-    func filteredSignal(_ input: inout [DSPComplex])
+    func filteredSignal(_ input: inout [ComplexSignal])
 }
 
 public enum FilterType {
@@ -49,7 +48,7 @@ public class IIRFilter: Filter {
         biquad!.apply(input: input, output: &input)
     }
     
-    public func filteredSignal(_ input: inout [DSPComplex]) {
+    public func filteredSignal(_ input: inout [ComplexSignal]) {
         if biquad == nil {
             initBiquad()
         }
@@ -91,7 +90,7 @@ public class FIRFilter: Filter {
     var taps: [Float]
     var tapsLength: Int
     var stateBuffer: UnsafeMutableBufferPointer<Float> // Last 'tapsLength - 1' values from previous buffer, need for convolution
-    var complexStateBuffer: UnsafeMutableBufferPointer<DSPComplex>
+    var complexStateBuffer: UnsafeMutableBufferPointer<ComplexSignal>
     
     public init(type: FilterType, cutoffFrequency: Double, sampleRate: Int, tapsLength: Int, windowFunc: vDSP.WindowSequence = .hamming) throws {
         var generatedFilter: [Float]
@@ -105,7 +104,7 @@ public class FIRFilter: Filter {
         stateBuffer = .allocate(capacity: tapsLength - 1)
         stateBuffer.initialize(repeating: 0.0)
         complexStateBuffer = .allocate(capacity: tapsLength - 1)
-        complexStateBuffer.initialize(repeating: DSPComplex(real: 0, imag: 0))
+        complexStateBuffer.initialize(repeating: ComplexSignal(real: 0, imag: 0))
     }
     
     public init(taps: [Float]) {
@@ -114,7 +113,7 @@ public class FIRFilter: Filter {
         stateBuffer = .allocate(capacity: tapsLength - 1)
         stateBuffer.initialize(repeating: 0.0)
         complexStateBuffer = .allocate(capacity: tapsLength - 1)
-        complexStateBuffer.initialize(repeating: DSPComplex(real: 0, imag: 0))
+        complexStateBuffer.initialize(repeating: ComplexSignal(real: 0, imag: 0))
     }
     
     deinit {
@@ -138,8 +137,8 @@ public class FIRFilter: Filter {
         input = tempOutputBuffer
     }
     
-    public func filteredSignal(_ input: inout [DSPComplex]) {
-        let workingBuffer = UnsafeMutableBufferPointer<DSPComplex>.allocate(capacity: input.count + tapsLength - 1)
+    public func filteredSignal(_ input: inout [ComplexSignal]) {
+        let workingBuffer = UnsafeMutableBufferPointer<ComplexSignal>.allocate(capacity: input.count + tapsLength - 1)
         defer {
             workingBuffer.deallocate()
         }
@@ -167,9 +166,9 @@ public class FIRFilter: Filter {
         vDSP.convert(splitComplexVector: splitComplexOutputBuffer, toInterleavedComplexVector: &input)
     }
     
-    public func filtfilt(_ input: inout [DSPComplex]) {
+    public func filtfilt(_ input: inout [ComplexSignal]) {
         self.filteredSignal(&input)
-        var reversedFilteredSignal: [DSPComplex] = input.reversed()
+        var reversedFilteredSignal: [ComplexSignal] = input.reversed()
         let freshFilter = FIRFilter(taps: self.taps)
         freshFilter.filteredSignal(&reversedFilteredSignal)
         input = reversedFilteredSignal.reversed()
@@ -192,7 +191,7 @@ public class FIRFilter: Filter {
         _ = stateBuffer.update(fromContentsOf: input.dropFirst(input.count - tapsLength + 1))
     }
     
-    private func copyToComplexStateBuffer(_ input: inout [DSPComplex]) {
+    private func copyToComplexStateBuffer(_ input: inout [ComplexSignal]) {
         _ = complexStateBuffer.update(fromContentsOf: input.dropFirst(input.count - tapsLength + 1))
     }
     

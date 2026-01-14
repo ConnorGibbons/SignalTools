@@ -7,7 +7,6 @@
 //  Tools for creating AFSK-modulated bitstreams.
 
 import Foundation
-import Accelerate
 
 /// Creates an AFSK modulated bitstream.
 /// markFreq encodes a 1, spaceFreq encodes a 0.

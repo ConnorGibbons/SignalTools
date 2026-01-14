@@ -9,7 +9,6 @@
 #if compiler(>=6.0)
 
 import XCTest
-import Accelerate
 import SignalTools
 
 let TEST_DATA_COUNT = 10_000_000

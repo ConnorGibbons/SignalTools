@@ -4,7 +4,6 @@
 //
 //  Created by Connor Gibbons  on 4/24/25.
 //
-import Accelerate
 
 // -------------------------------------------------------------------------------------------------------------
 //       Example filters, really just here for conceptual understanding. I don't recommend using them

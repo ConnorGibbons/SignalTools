@@ -5,8 +5,6 @@
 //  Created by Connor Gibbons  on 6/24/25.
 //
 
-import Accelerate
-
 public extension [Float] {
     
     func standardDeviation() -> Float {
@@ -61,22 +59,6 @@ public extension [Float] {
             mutableSelf[Int(topIndexAndValue.0)] = -Float.infinity
         }
         return result
-    }
-    
-}
-
-public extension DSPComplex {
-    
-    func magnitude() -> Float {
-        return ((real * real) + (imag * imag)).squareRoot()
-    }
-    
-}
-
-public extension [DSPComplex] {
-    
-    func magnitude() -> [Float] {
-        return self.map({$0.magnitude()})
     }
     
 }
