@@ -4,6 +4,7 @@
 //
 //  Created by Connor Gibbons  on 6/24/25.
 //
+import Foundation
 
 public class Downsampler {
     private var decimationFactor: Int
@@ -11,7 +12,7 @@ public class Downsampler {
     
     // State
     private var realContext: [Float]
-    private var complexContext: [DSPComplex]
+    private var complexContext: [ComplexSample]
     private var realSkipCount: Int
     private var complexSkipCount: Int
     

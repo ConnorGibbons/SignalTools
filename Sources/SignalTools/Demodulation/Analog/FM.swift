@@ -10,7 +10,7 @@ import Foundation
 
 /// This function will do FM demodulation, but much slower than demodulateFM 
 /// Here for conceptual understanding.
-public func demodulateFMSlow(_ samples: [DSPComplex]) -> [Float] {
+public func demodulateFMSlow(_ samples: [ComplexSample]) -> [Float] {
     var diffs =  [Float].init(repeating: 0.0, count: samples.count - 1)
     for i in 1..<samples.count {
         let i0 = samples[i-1].real
@@ -26,8 +26,8 @@ public func demodulateFMSlow(_ samples: [DSPComplex]) -> [Float] {
 }
 
 /// Demodulates FM by mutliplying each sample by the conjugate of the preceding sample, providing phase in radians.
-public func demodulateFM(_ samples: [DSPComplex]) -> [Float] {
-    let n = vDSP_Length(samples.count - 1)
+public func demodulateFM(_ samples: [ComplexSample]) -> [Float] {
+    let n = samples.count - 1
     var diffs = [Float].init(repeating: 0.0, count: samples.count - 1)
     samples.withUnsafeBufferPointer { samplesPtr in
         let basePointer = samplesPtr.baseAddress!
@@ -39,15 +39,15 @@ public func demodulateFM(_ samples: [DSPComplex]) -> [Float] {
             var tempReal = [Float].init(repeating: 0.0, count: samples.count - 1)
             var tempIm = [Float].init(repeating: 0.0, count: samples.count - 1)
             
-            let stride = vDSP_Stride(2) // One IQSample struct's worth of memory should be 2 floats
-            let shortStride = vDSP_Stride(1)
+            let stride = 2
+            let shortStride = 1
             tempReal.withUnsafeMutableBufferPointer { tempRealPtr in
                 tempIm.withUnsafeMutableBufferPointer { tempImPtr in
-                    var A: DSPSplitComplex = .init(realp: UnsafeMutablePointer(mutating: i0), imagp: UnsafeMutablePointer(mutating: q0)) // prev
-                    var B: DSPSplitComplex = .init(realp: UnsafeMutablePointer(mutating: i1), imagp: UnsafeMutablePointer(mutating: q1)) // curr
-                    var C: DSPSplitComplex = .init(realp: tempRealPtr.baseAddress!, imagp: tempImPtr.baseAddress!)
-                    vDSP_zvmul(&A, stride, &B, stride, &C, 1, n, -1)
-                    vDSP_zvphas(&C, shortStride, &diffs, shortStride, n)
+                    var A: SplitComplexSamples = .init(realp: UnsafeMutablePointer(mutating: i0), imagp: UnsafeMutablePointer(mutating: q0)) // prev
+                    var B: SplitComplexSamples = .init(realp: UnsafeMutablePointer(mutating: i1), imagp: UnsafeMutablePointer(mutating: q1)) // curr
+                    var C: SplitComplexSamples = .init(realp: tempRealPtr.baseAddress!, imagp: tempImPtr.baseAddress!)
+                    DSP.multiplyComplexVectors(&A, stride, &B, stride, &C, 1, n, true)
+                    DSP.phase(&C, shortStride, &diffs, shortStride, n)
                 }
             }
         }

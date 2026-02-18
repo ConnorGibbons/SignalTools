@@ -9,8 +9,8 @@ import Foundation
 
 #if canImport(Accelerate)
 import Accelerate
-public typealias ComplexSignal = DSPComplex
-public typealias SplitComplexSignal = DSPSplitComplex
+public typealias ComplexSample = DSPComplex
+public typealias SplitComplexSamples = DSPSplitComplex
 #else
 struct ComplexSignal: Equatable {
     var real: Float
@@ -18,19 +18,27 @@ struct ComplexSignal: Equatable {
 }
 
 struct SplitComplexSignal {
-    var real: UnsafeMutablePointer<Float>
-    var imag: UnsafeMutablePointer<Float>
+    var realp: UnsafeMutablePointer<Float>
+    var imagp: UnsafeMutablePointer<Float>
 }
 #endif
 
-public extension ComplexSignal {
+public extension ComplexSample {
     func magnitude() -> Float {
         return ((real * real) + (imag * imag)).squareRoot()
     }
+    
+    func conjugate() -> ComplexSample {
+        return ComplexSample(real: real, imag: -imag)
+    }
 }
 
-public extension [ComplexSignal] {
+public extension [ComplexSample] {
     func magnitude() -> [Float] {
-        return self.map({$0.magnitude()})
+        return self.map { $0.magnitude() }
+    }
+    
+    func conjugate() -> [ComplexSample] {
+        return self.map { $0.conjugate() }
     }
 }

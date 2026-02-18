@@ -11,10 +11,10 @@ import Foundation
 /// Read IQ Samples from a .wav where samples are stored as 16-bit integers.
 /// Samples are expected to be interleaved IQ.
 /// Samples are adjusted to be in range [-1,1]
-public func readIQFromWAV16Bit(fileURL: URL) throws -> [DSPComplex] {
+public func readIQFromWAV16Bit(fileURL: URL) throws -> [ComplexSample] {
     let data = try Data(contentsOf: fileURL)
     
-    var iqOutput: [DSPComplex] = []
+    var iqOutput: [ComplexSample] = []
     
     let iqData = data.dropFirst(44)
     guard iqData.count % 4 == 0 else {
@@ -28,14 +28,14 @@ public func readIQFromWAV16Bit(fileURL: URL) throws -> [DSPComplex] {
         while currOffset < int16ArrayBasePointer.count {
             let realSample = Float(int16ArrayBasePointer[currOffset]) / 32768.0
             let imagSample = Float(int16ArrayBasePointer[currOffset + 1]) / 32768.0
-            iqOutput.append(DSPComplex(real: realSample, imag: imagSample))
+            iqOutput.append(ComplexSample(real: realSample, imag: imagSample))
             currOffset += 2
         }
     }
     
     return iqOutput
 }
-public func readIQFromWAV16Bit(filePath: String) throws -> [DSPComplex] {
+public func readIQFromWAV16Bit(filePath: String) throws -> [ComplexSample] {
     let fileURL = URL(fileURLWithPath: filePath)
     return try readIQFromWAV16Bit(fileURL: fileURL)
 }

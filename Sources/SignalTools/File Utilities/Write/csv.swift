@@ -51,7 +51,7 @@ public func writeAudioToFile(_ audio: [Float], path: String = "") {
 
 /// Write samples to specified path in .csv format.
 /// Each line is as follows: I,Q\n
-public func samplesToCSV(_ samples: [ComplexSignal], path: String) {
+public func samplesToCSV(_ samples: [ComplexSample], path: String) {
     var csvText = "I,Q\n"
     for sample in samples {
         csvText.append("\(sample.real),\(sample.imag)\n")
