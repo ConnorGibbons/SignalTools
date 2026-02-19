@@ -4,8 +4,9 @@
 //
 //  Created by Connor Gibbons  on 6/24/25.
 //
+import Foundation
 
-// Frequency Shifting
+// ** Frequency Shifting **
 
 public func shiftFrequencyToBaseband(rawIQ: [ComplexSample], result: inout [ComplexSample], frequency: Float, sampleRate: Int) {
     guard rawIQ.count == result.count else {
@@ -18,9 +19,9 @@ public func shiftFrequencyToBaseband(rawIQ: [ComplexSample], result: inout [Comp
         return ComplexSample(real: cos(angle), imag: sin(angle))
     }
     
-    var splitInputBuffer = DSPSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
-    var splitMixerBuffer = DSPSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
-    var splitResultBuffer = DSPSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
+    var splitInputBuffer = SplitComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
+    var splitMixerBuffer = SplitComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
+    var splitResultBuffer = SplitComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
     defer {
         splitInputBuffer.realp.deallocate()
         splitInputBuffer.imagp.deallocate()
@@ -55,7 +56,7 @@ public func shiftFrequencyToBasebandHighPrecision(rawIQ: [ComplexSample], result
     var splitInputBuffer = DSPDoubleSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
     var splitMixerBuffer = DSPDoubleSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
     var splitResultBuffer = DSPDoubleSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
-    let splitFloatResultBuffer = DSPSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
+    let splitFloatResultBuffer = SplitComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
     defer {
         splitInputBuffer.realp.deallocate()
         splitInputBuffer.imagp.deallocate()
@@ -106,7 +107,7 @@ public func calculateAngle(rawIQ: [ComplexSample], result: inout [Float]) {
     guard sampleCount == result.count && !rawIQ.isEmpty else {
         return
     }
-    var splitBuffer = DSPSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
+    var splitBuffer = SplitComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
     vDSP.convert(interleavedComplexVector: rawIQ, toSplitComplexVector: &splitBuffer)
     vDSP.phase(splitBuffer, result: &result)
     

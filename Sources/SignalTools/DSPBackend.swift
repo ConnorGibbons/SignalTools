@@ -19,6 +19,18 @@ enum AccelerateBackend {
         vDSP_zvmul(input1, vDSP_Stride(input1Stride), input2, vDSP_Stride(input2Stride), output, vDSP_Stride(outputStride), vDSP_Length(count), Int32(useConjugate))
     }
     
+    static func multiply(_ input1: [Float],_ input2: [Float],_ result: inout [Float]) {
+        vDSP.multiply(input1, input2, result: &result)
+    }
+    
+    static func multiply(_ input1: SplitComplexSamples,_ input2: SplitComplexSamples,_ count: Int,_ useConjugate: Bool, _ result: inout SplitComplexSamples) {
+        vDSP.multiply(input1,by: input2, count: count, useConjugate: useConjugate, result: &result)
+    }
+    
+    static func multiply(_ scalar: Float,_ input: [Float]) -> [Float] {
+        vDSP.multiply(scalar, input)
+    }
+    
     static func zvphas(_ input: UnsafePointer<SplitComplexSamples>,_ inputStride: Int,_ output: UnsafeMutablePointer<Float>,_ outputStride: Int,_ count: Int) {
         vDSP_zvphas(input, vDSP_Stride(inputStride), output, vDSP_Stride(outputStride), vDSP_Length(count))
     }
@@ -36,9 +48,21 @@ enum AccelerateBackend {
         vDSP_maxvi(input, vDSP_Stride(inputStride), outputValue, &index, vDSP_Length(count))
         outputIndex.pointee = Int(index)
     }
+    
+    static func indexOfMaximum(_ input: [Float]) -> (UInt, Float) {
+        return vDSP.indexOfMaximum(input)
+    }
 
     static func desamp(_ input: UnsafePointer<Float>,_ decimationFactor: Int,_ filter: UnsafePointer<Float>, _ output: UnsafeMutablePointer<Float>,_ count: Int, _ filterLength: Int) {
         vDSP_desamp(input, vDSP_Stride(decimationFactor), filter, output, vDSP_Length(count), vDSP_Length(filterLength))
+    }
+    
+    static func convert(_ complexSplitVector: SplitComplexSamples,_ interleavedComplexVector: inout [ComplexSample]) {
+        vDSP.convert(splitComplexVector: complexSplitVector, toInterleavedComplexVector: &interleavedComplexVector)
+    }
+    
+    static func convert(_ interleavedComplexVector: [ComplexSample],_ complexSplitVector: inout SplitComplexSamples) {
+        vDSP.convert(interleavedComplexVector: interleavedComplexVector, toSplitComplexVector: &complexSplitVector)
     }
     
 }
@@ -98,6 +122,36 @@ enum GenericBackend {
             output.pointee.realp[outputPos] = outputReal
             output.pointee.imagp[outputPos] = outputImag
         }
+    }
+    
+    static func multiply(_ input1: [Float],_ input2: [Float],_ result: inout [Float]) {
+        let shortestLength = min(min(input1.count,input2.count),result.count)
+        guard shortestLength > 0 else {
+            print("Invalid parameters for multiply")
+            assertionFailure(); return
+        }
+        for i in 0..<(shortestLength - 1) {
+            result[i] = input1[i] * input2[i]
+        }
+    }
+    
+    static func multiply(_ input1: SplitComplexSamples,_ input2: SplitComplexSamples,_ count: Int,_ useConjugate: Bool, _ result: inout SplitComplexSamples) {
+        guard count > 0 else {
+            print("Invalid parameters for multiply")
+            assertionFailure(); return
+        }
+        var mutableInput1 = input1
+        var mutableInput2 = input2
+        GenericBackend.zvmul(&mutableInput1, 1, &mutableInput2, 1, &result, 1, count, useConjugate ? 1 : 0)
+    }
+    
+    static func multiply(_ scalar: Float,_ input: [Float]) -> [Float] {
+        guard !input.isEmpty else {
+            return []
+        }
+        var result: [Float] = .init(repeating: 0, count: input.count)
+        GenericBackend.multiply([scalar], input, &result)
+        return result
     }
     
     /// Calculates the phase of each complex vector in **input**
@@ -191,6 +245,18 @@ enum GenericBackend {
         outputIndex.pointee = maxIndex
     }
     
+    static func indexOfMaximum(_ input: [Float]) -> (UInt, Float) {
+        var outputIndex: UnsafeMutablePointer<Int> = .allocate(capacity: 1)
+        var outputValue: UnsafeMutablePointer<Float> = .allocate(capacity: 1)
+        defer {
+            outputIndex.deallocate()
+            outputValue.deallocate()
+        }
+        
+        GenericBackend.maxvi(input, 1, outputValue, outputIndex, input.count)
+        return (UInt(outputIndex.pointee), outputValue.pointee)
+    }
+    
     /// Downsamples & filters the **input** vector.
     /// input: Real-valued input vector
     /// decimationFactor: The amount by which the total number of samples is divided. For example, a decimation factor of two implies the sample count will be halved.
@@ -214,6 +280,31 @@ enum GenericBackend {
         }
     }
     
+    /// Converts SplitComplexSamples to [ComplexSample]
+    /// complexSplitVector: SplitComplexVector to be converted
+    /// interleavedComplexVector: Will store the [ComplexSample] result.
+    /// Note: Ensure that complexSplitVector has at least interleavedComplexVector.count elements. Output will only be as long as interleavedComplexVector's length at the time of calling.
+    static func convert(_ complexSplitVector: SplitComplexSamples,_ interleavedComplexVector: inout [ComplexSample]) {
+        let count = interleavedComplexVector.count
+        for i in 0..<count {
+            interleavedComplexVector[i] = ComplexSample(real: complexSplitVector.realp[i], imag: complexSplitVector.imagp[i])
+        }
+    }
+    
+    /// Converts [ComplexSample] to SplitComplexSamples.
+    /// interleavedComplexVector: [ComplexSample] to convert
+    /// complexSplitVector: Will store the SplitComplexSamples result.
+    /// Note: Make sure that complexSplitVector has memory allocated beforehand, at least enough to store interleavedComplexVector.count in both realp and imagp.
+    static func convert(_ interleavedComplexVector: [ComplexSample], _ complexSplitVector: inout SplitComplexSamples) {
+        let count = interleavedComplexVector.count
+        complexSplitVector.realp.deinitialize(count: count)
+        complexSplitVector.imagp.deinitialize(count: count)
+        for i in 0..<count {
+            complexSplitVector.imagp[i] = interleavedComplexVector[i].imag
+            complexSplitVector.realp[i] = interleavedComplexVector[i].real
+        }
+    }
+    
 }
 
 #if canImport(Accelerate)
@@ -234,6 +325,14 @@ public enum DSP {
         DSPBackend.zvmul(input1, input1Stride, input2, input2Stride, output, outputStride, count, useConjugate ? 1 : -1)
     }
     
+    static func multiplyRealVectors(_ input1: [Float],_ input2: [Float],_ result: inout [Float]) {
+        DSPBackend.multiply(input1, input2, &result)
+    }
+    
+    static func multiplySplitComplexVectors(_ input1: SplitComplexSamples,_ input2: SplitComplexSamples,_ count: Int,_ useConjugate: Bool,_ result: inout SplitComplexSamples) {
+        DSPBackend.multiply(input1, input2, count, useConjugate, &result)
+    }
+    
     static func phase(_ input: UnsafePointer<SplitComplexSamples>,_ inputStride: Int,_ output: UnsafeMutablePointer<Float>,_ outputStride: Int,_ count: Int) -> Void {
         DSPBackend.zvphas(input, inputStride, output, outputStride, count)
     }
@@ -248,6 +347,22 @@ public enum DSP {
     
     static func maxValueIndex(_ input: UnsafePointer<Float>,_ inputStride: Int,_ outputValue: UnsafeMutablePointer<Float>,_ outputIndex: UnsafeMutablePointer<Int>,_ count: Int) -> Void {
         DSPBackend.maxvi(input, inputStride, outputValue, outputIndex, count)
+    }
+    
+    static func maxValueIndex(_ input: [Float]) -> (UInt, Float) {
+        return DSPBackend.indexOfMaximum(input)
+    }
+    
+    static func desamp(_ input: UnsafePointer<Float>,_ decimationFactor: Int,_ filter: UnsafePointer<Float>,_ output: UnsafeMutablePointer<Float>,_ count: Int,_ filterLength: Int) -> Void {
+        DSPBackend.desamp(input, decimationFactor, filter, output, count, filterLength)
+    }
+    
+    static func convert(_ splitComplexVector: SplitComplexSamples,_ interleavedComplexVector: inout [ComplexSample]) {
+        DSPBackend.convert(splitComplexVector, &interleavedComplexVector)
+    }
+    
+    static func convert(_ interleavedComplexVector: [ComplexSample],_ splitComplexVector: inout SplitComplexSamples) {
+        DSPBackend.convert(interleavedComplexVector, &splitComplexVector)
     }
     
 }

@@ -11,15 +11,27 @@ import Foundation
 import Accelerate
 public typealias ComplexSample = DSPComplex
 public typealias SplitComplexSamples = DSPSplitComplex
+public typealias DoubleComplexSample = DSPDoubleComplex
+public typealias SplitDoubleComplexSamples = DSPDoubleSplitComplex
 #else
-struct ComplexSignal: Equatable {
+struct ComplexSample: Equatable {
     var real: Float
     var imag: Float
 }
 
-struct SplitComplexSignal {
+struct SplitComplexSamples {
     var realp: UnsafeMutablePointer<Float>
     var imagp: UnsafeMutablePointer<Float>
+}
+
+struct DoubleComplexSample: Equatable {
+    var real: Double
+    var imag: Double
+}
+
+struct SplitDoubleComplexSamples {
+    var realp: UnsafeMutablePointer<Double>
+    var imagp: UnsafeMutablePointer<Double>
 }
 #endif
 

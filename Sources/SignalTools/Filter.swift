@@ -5,6 +5,8 @@
 //  Created by Connor Gibbons  on 4/21/25.
 //
 
+import Foundation
+
 public protocol Filter {
     func filteredSignal( _ input: inout [Float])
     func filteredSignal(_ input: inout [ComplexSample])
@@ -56,7 +58,7 @@ public class IIRFilter: Filter {
         var imag = [Float].init(repeating: 0.0, count: input.count)
         real.withUnsafeMutableBufferPointer { r in
             imag.withUnsafeMutableBufferPointer { i in
-                var splitComplex = DSPSplitComplex(realp: r.baseAddress!, imagp: i.baseAddress!)
+                var splitComplex = SplitComplexSamples(realp: r.baseAddress!, imagp: i.baseAddress!)
                 vDSP.convert(interleavedComplexVector: input, toSplitComplexVector: &splitComplex)
             }
         }
@@ -66,7 +68,7 @@ public class IIRFilter: Filter {
         
         real.withUnsafeMutableBufferPointer { r in
             imag.withUnsafeMutableBufferPointer { i in
-                let splitComplex = DSPSplitComplex(realp: r.baseAddress!, imagp: i.baseAddress!)
+                let splitComplex = SplitComplexSamples(realp: r.baseAddress!, imagp: i.baseAddress!)
                 vDSP.convert(splitComplexVector: splitComplex, toInterleavedComplexVector: &input)
             }
         }
@@ -148,10 +150,10 @@ public class FIRFilter: Filter {
         currentBufferStartingPoint.initialize(from: input, count: input.count)
         
         copyToComplexStateBuffer(&input)
-        let splitComplexOutputBuffer = DSPSplitComplex(realp: .allocate(capacity: input.count), imagp: .allocate(capacity: input.count))
+        let splitComplexOutputBuffer = SplitComplexSamples(realp: .allocate(capacity: input.count), imagp: .allocate(capacity: input.count))
         var realOutputBuffer = UnsafeMutableBufferPointer(start: splitComplexOutputBuffer.realp, count: input.count)
         var imagOutputBuffer = UnsafeMutableBufferPointer(start: splitComplexOutputBuffer.imagp, count: input.count)
-        var splitComplexBuffer = DSPSplitComplex(realp: .allocate(capacity: input.count + tapsLength - 1), imagp: .allocate(capacity: input.count + tapsLength - 1))
+        var splitComplexBuffer = SplitComplexSamples(realp: .allocate(capacity: input.count + tapsLength - 1), imagp: .allocate(capacity: input.count + tapsLength - 1))
         defer {
             splitComplexOutputBuffer.imagp.deallocate()
             splitComplexOutputBuffer.realp.deallocate()
