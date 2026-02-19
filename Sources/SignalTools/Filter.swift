@@ -94,7 +94,7 @@ public class FIRFilter: Filter {
     var stateBuffer: UnsafeMutableBufferPointer<Float> // Last 'tapsLength - 1' values from previous buffer, need for convolution
     var complexStateBuffer: UnsafeMutableBufferPointer<ComplexSample>
     
-    public init(type: FilterType, cutoffFrequency: Double, sampleRate: Int, tapsLength: Int, windowFunc: vDSP.WindowSequence = .hamming) throws {
+    public init(type: FilterType, cutoffFrequency: Double, sampleRate: Int, tapsLength: Int) throws {
         var generatedFilter: [Float]
         switch type {
         case .lowPass:

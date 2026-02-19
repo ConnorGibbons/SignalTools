@@ -10,24 +10,22 @@ public extension [Float] {
     func standardDeviation() -> Float {
         var result = Float()
         var mean = Float()
-        let stride = vDSP_Stride(1)
-        vDSP_normalize(self, stride, nil, vDSP_Stride(1), &mean, &result, vDSP_Length(self.count))
+        var disregardableOutput: [Float] = .init(repeating: 0.0, count: self.count)
+        DSP.normalize(input: self, inputStride: 1, output: &disregardableOutput, outputStride: 1, calculatedMean: &mean, calculatedStdDev: &result, count: self.count)
         return result
     }
     
     func average() -> Float {
         var result = Float()
-        let stride = vDSP_Stride(1)
-        vDSP_meanv(self, stride, &result, vDSP_Length(self.count))
+        DSP.mean(input: self, inputStride: 1, output: &result, count: self.count)
         return result
     }
     
     func normalize() -> [Float] {
-        let stride = vDSP_Stride(1)
         var result = [Float].init(repeating: 0.0, count: self.count)
         var mean: Float = 0.0
         var standardDeviation: Float = 0.0
-        vDSP_normalize(self, stride, &result, stride, &mean, &standardDeviation, vDSP_Length(self.count))
+        DSP.normalize(input: self, inputStride: 1, output: &result, outputStride: 1, calculatedMean: &mean, calculatedStdDev: &standardDeviation, count: self.count)
         return result
     }
     
@@ -39,7 +37,7 @@ public extension [Float] {
         var result: [Int] = .init(repeating: 0, count: k)
         var mutableSelf = self
         for i in 0..<k {
-            let topIndex = Int(vDSP.indexOfMaximum(mutableSelf).0)
+            let topIndex = Int(DSP.indexOfMaximum(input: self).0)
             result[i] = topIndex
             mutableSelf[topIndex] = -Float.infinity
         }
@@ -54,7 +52,7 @@ public extension [Float] {
         var result: [(Int, Float)] = .init(repeating: (0, 0), count: k)
         var mutableSelf = self
         for i in 0..<k {
-            let topIndexAndValue = vDSP.indexOfMaximum(mutableSelf)
+            let topIndexAndValue = DSP.indexOfMaximum(input: mutableSelf)
             result[i] = (Int(topIndexAndValue.0), topIndexAndValue.1)
             mutableSelf[Int(topIndexAndValue.0)] = -Float.infinity
         }

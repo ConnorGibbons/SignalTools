@@ -17,7 +17,7 @@ public func slidingCorrelation(signal: [Float], template: [Float]) -> [Float]? {
         template.withUnsafeBufferPointer { templatePtr in
             let signalBasePointer = signalPtr.baseAddress!
             let templateBasePointer = templatePtr.baseAddress!
-            DSP.convolve(signalBasePointer, 1, templateBasePointer, 1, &result, 1, outputCount, template.count)
+            DSP.convolve(signal: signalBasePointer, signalStride: 1, kernel: templateBasePointer, kernelStride: 1, result: &result, resultStride: 1, outputLength: outputCount, kernelLength: template.count)
         }
     }
     return result

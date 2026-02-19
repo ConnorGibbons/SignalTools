@@ -65,7 +65,7 @@ public class Downsampler {
         
         self.realSkipCount = (expectedOutputCount * decimationFactor) - usableSampleCount // Gets the index of what would be the next sample point, finds what that index would be in the next call w/ buffer prepended. Uses this as the next starting point.
         
-        DSP.desamp(&inputWithContextAndPhaseAdjustment, decimationFactor, &self.filter, &output, expectedOutputCount, filter.count)
+        DSP.desamp(input: &inputWithContextAndPhaseAdjustment, decimationFactor: decimationFactor, filter: &self.filter, output: &output, count: expectedOutputCount, filterLength: filter.count)
         return output
     }
     
@@ -126,7 +126,7 @@ public func downsampleComplex(iqData: [ComplexSample], decimationFactor: Int, fi
         splitComplexData.realp.deallocate()
         splitComplexData.imagp.deallocate()
     }
-    DSP.convert(interleavedComplexVector: iqData, toSplitComplexVector: &splitComplexData)
+    DSP.convert(interleavedComplexVector: iqData, splitComplexVector: &splitComplexData)
     let iBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.realp, count: iqData.count)
     let qBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.imagp, count: iqData.count)
     let iBranchArray: [Float] = Array(iBranchBufferPointer)
@@ -137,7 +137,7 @@ public func downsampleComplex(iqData: [ComplexSample], decimationFactor: Int, fi
     return iBranchDownsampled.withUnsafeMutableBufferPointer { iDownsampledBufferPointer in
         qBranchDownsampled.withUnsafeMutableBufferPointer { qDownsampledBufferPointer in
             let splitDownsampledData = SplitComplexSamples(realp: iDownsampledBufferPointer.baseAddress!, imagp: qDownsampledBufferPointer.baseAddress!)
-            DSP.convert(splitComplexVector: splitDownsampledData, toInterleavedComplexVector: &returnVector)
+            DSP.convert(splitComplexVector: splitDownsampledData, interleavedComplexVector: &returnVector)
             return returnVector
         }
     }
@@ -150,7 +150,7 @@ public func downsampleReal(data: [Float], decimationFactor: Int, filter: [Float]
     var dataMutableCopy: [Float] = data
     var filterMutableCopy: [Float] = filter
     
-    DSP.desamp(&dataMutableCopy, decimationFactor, &filterMutableCopy, &outputBuffer, outputCount, filter.count)
+    DSP.desamp(input: &dataMutableCopy, decimationFactor: decimationFactor, filter: &filterMutableCopy, output: &outputBuffer, count: outputCount, filterLength: filter.count)
     
     return outputBuffer
 }

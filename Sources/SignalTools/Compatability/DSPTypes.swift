@@ -13,6 +13,8 @@ public typealias ComplexSample = DSPComplex
 public typealias SplitComplexSamples = DSPSplitComplex
 public typealias DoubleComplexSample = DSPDoubleComplex
 public typealias SplitDoubleComplexSamples = DSPDoubleSplitComplex
+public typealias WindowFunction = vDSP.WindowSequence
+public typealias FloatingPointGeneratable = vDSP_FloatingPointGeneratable
 #else
 struct ComplexSample: Equatable {
     var real: Float
@@ -33,6 +35,15 @@ struct SplitDoubleComplexSamples {
     var realp: UnsafeMutablePointer<Double>
     var imagp: UnsafeMutablePointer<Double>
 }
+
+enum WindowFunction {
+    case hanningNormalized
+    case hanningDenormalized
+    case hamming
+    case blackman
+}
+
+protocol FloatingPointGeneratable: BinaryFloatingPoint {}
 #endif
 
 public extension ComplexSample {

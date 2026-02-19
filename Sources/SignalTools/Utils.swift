@@ -31,10 +31,10 @@ public func shiftFrequencyToBaseband(rawIQ: [ComplexSample], result: inout [Comp
         splitResultBuffer.imagp.deallocate()
     }
     
-    vDSP.convert(interleavedComplexVector: rawIQ, toSplitComplexVector: &splitInputBuffer)
-    vDSP.convert(interleavedComplexVector: complexMixerArray, toSplitComplexVector: &splitMixerBuffer)
-    vDSP.multiply(splitInputBuffer, by: splitMixerBuffer, count: sampleCount, useConjugate: false, result: &splitResultBuffer)
-    vDSP.convert(splitComplexVector: splitResultBuffer, toInterleavedComplexVector: &result)
+    DSP.convert(interleavedComplexVector: rawIQ, splitComplexVector: &splitInputBuffer)
+    DSP.convert(interleavedComplexVector: complexMixerArray, splitComplexVector: &splitMixerBuffer)
+    DSP.multiplySplitComplexVectors(splitInputBuffer, splitMixerBuffer, count: sampleCount, useConjugate: false, result: &splitResultBuffer)
+    DSP.convert(splitComplexVector: splitResultBuffer, interleavedComplexVector: &result)
 }
 
 /// I've found that without using Double internally, weird artifacts can occur.

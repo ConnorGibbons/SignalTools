@@ -1,74 +1,12 @@
 //
-//  DSPBackend.swift
+//  GenericBackend.swift
 //  SignalTools
 //
-//  Created by Connor Gibbons  on 1/14/26.
+//  Created by Connor Gibbons  on 2/19/26.
 //
-
 import Foundation
 
-#if canImport(Accelerate)
-import Accelerate
-enum AccelerateBackend {
-    
-    static func conv(_ signal: UnsafePointer<Float>, _ signalStride: Int, _ kernel: UnsafePointer<Float>, _ kernelStride: Int, _ result: UnsafeMutablePointer<Float>, _ resultStride: Int, _ outputLength: Int, _ kernelLength: Int) -> Void {
-        vDSP_conv(signal, vDSP_Stride(signalStride), kernel, vDSP_Stride(kernelStride), result, vDSP_Stride(resultStride), vDSP_Length(outputLength), vDSP_Length(kernelLength))
-    }
-    
-    static func zvmul(_ input1: UnsafePointer<SplitComplexSamples>,_ input1Stride: Int,_ input2: UnsafePointer<SplitComplexSamples>,_ input2Stride: Int,_ output: UnsafeMutablePointer<SplitComplexSamples>,_ outputStride: Int, _ count: Int, _ useConjugate: Int) -> Void {
-        vDSP_zvmul(input1, vDSP_Stride(input1Stride), input2, vDSP_Stride(input2Stride), output, vDSP_Stride(outputStride), vDSP_Length(count), Int32(useConjugate))
-    }
-    
-    static func multiply(_ input1: [Float],_ input2: [Float],_ result: inout [Float]) {
-        vDSP.multiply(input1, input2, result: &result)
-    }
-    
-    static func multiply(_ input1: SplitComplexSamples,_ input2: SplitComplexSamples,_ count: Int,_ useConjugate: Bool, _ result: inout SplitComplexSamples) {
-        vDSP.multiply(input1,by: input2, count: count, useConjugate: useConjugate, result: &result)
-    }
-    
-    static func multiply(_ scalar: Float,_ input: [Float]) -> [Float] {
-        vDSP.multiply(scalar, input)
-    }
-    
-    static func zvphas(_ input: UnsafePointer<SplitComplexSamples>,_ inputStride: Int,_ output: UnsafeMutablePointer<Float>,_ outputStride: Int,_ count: Int) {
-        vDSP_zvphas(input, vDSP_Stride(inputStride), output, vDSP_Stride(outputStride), vDSP_Length(count))
-    }
-    
-    static func normalize(_ input: UnsafePointer<Float>,_ inputStride: Int,_ output: UnsafeMutablePointer<Float>,_ outputStride: Int,_ calculatedMean: UnsafeMutablePointer<Float>,_ calculatedStdDev: UnsafeMutablePointer<Float>,_ count: Int) {
-        vDSP_normalize(input, vDSP_Stride(inputStride), output, vDSP_Stride(outputStride), calculatedMean, calculatedStdDev, vDSP_Length(count))
-    }
-    
-    static func meanv(_ input: UnsafePointer<Float>,_ inputStride: Int,_ output: UnsafeMutablePointer<Float>,_ count: Int) {
-        vDSP_meanv(input, vDSP_Stride(inputStride), output, vDSP_Length(count))
-    }
-    
-    static func maxvi(_ input: UnsafePointer<Float>,_ inputStride: Int,_ outputValue: UnsafeMutablePointer<Float>,_ outputIndex: UnsafeMutablePointer<Int>,_ count: Int) {
-        var index: vDSP_Length = 0
-        vDSP_maxvi(input, vDSP_Stride(inputStride), outputValue, &index, vDSP_Length(count))
-        outputIndex.pointee = Int(index)
-    }
-    
-    static func indexOfMaximum(_ input: [Float]) -> (UInt, Float) {
-        return vDSP.indexOfMaximum(input)
-    }
-
-    static func desamp(_ input: UnsafePointer<Float>,_ decimationFactor: Int,_ filter: UnsafePointer<Float>, _ output: UnsafeMutablePointer<Float>,_ count: Int, _ filterLength: Int) {
-        vDSP_desamp(input, vDSP_Stride(decimationFactor), filter, output, vDSP_Length(count), vDSP_Length(filterLength))
-    }
-    
-    static func convert(_ complexSplitVector: SplitComplexSamples,_ interleavedComplexVector: inout [ComplexSample]) {
-        vDSP.convert(splitComplexVector: complexSplitVector, toInterleavedComplexVector: &interleavedComplexVector)
-    }
-    
-    static func convert(_ interleavedComplexVector: [ComplexSample],_ complexSplitVector: inout SplitComplexSamples) {
-        vDSP.convert(interleavedComplexVector: interleavedComplexVector, toSplitComplexVector: &complexSplitVector)
-    }
-    
-}
-#endif
-
-enum GenericBackend {
+enum GenericBackend: Backend {
     
     /// Performs convolution / correlation on **signal**.
     /// signalStride: Determines how many elements to advance by in **signal** after each calculation. Must be >= 1.
@@ -305,64 +243,10 @@ enum GenericBackend {
         }
     }
     
-}
-
-#if canImport(Accelerate)
-typealias DSPBackend = AccelerateBackend
-#else
-typealias DSPBackend = GenericBackend
-#endif
-
-public enum DSP {
-    
-    /// Performs either correlation or convolution on two real single-precision vectors.
-    /// Provide a negative stride on the filter to do convolution, positive for correlation.
-    static func convolve(_ signal: UnsafePointer<Float>,_ signalStride: Int,_ kernel: UnsafePointer<Float>,_ kernelStride: Int,_ result: UnsafeMutablePointer<Float>,_ resultStride: Int, _ outputLength: Int,_ kernelLength: Int) -> Void {
-        DSPBackend.conv(signal, signalStride, kernel, kernelStride, result, resultStride, outputLength, kernelLength)
-    }
-    
-    static func multiplyComplexVectors(_ input1: UnsafePointer<SplitComplexSamples>,_ input1Stride: Int,_ input2: UnsafePointer<SplitComplexSamples>,_ input2Stride: Int,_ output: UnsafeMutablePointer<SplitComplexSamples>,_ outputStride: Int,_ count: Int,_ useConjugate: Bool) -> Void {
-        DSPBackend.zvmul(input1, input1Stride, input2, input2Stride, output, outputStride, count, useConjugate ? 1 : -1)
-    }
-    
-    static func multiplyRealVectors(_ input1: [Float],_ input2: [Float],_ result: inout [Float]) {
-        DSPBackend.multiply(input1, input2, &result)
-    }
-    
-    static func multiplySplitComplexVectors(_ input1: SplitComplexSamples,_ input2: SplitComplexSamples,_ count: Int,_ useConjugate: Bool,_ result: inout SplitComplexSamples) {
-        DSPBackend.multiply(input1, input2, count, useConjugate, &result)
-    }
-    
-    static func phase(_ input: UnsafePointer<SplitComplexSamples>,_ inputStride: Int,_ output: UnsafeMutablePointer<Float>,_ outputStride: Int,_ count: Int) -> Void {
-        DSPBackend.zvphas(input, inputStride, output, outputStride, count)
-    }
-    
-    static func normalize(_ input: UnsafePointer<Float>,_ inputStride: Int,_ output: UnsafeMutablePointer<Float>,_ outputStride: Int,_ calculatedMean: UnsafeMutablePointer<Float>,_ calculatedStdDev: UnsafeMutablePointer<Float>,_ count: Int) -> Void {
-        DSPBackend.normalize(input, inputStride, output, outputStride, calculatedMean, calculatedStdDev, count)
-    }
-    
-    static func mean(_ input: UnsafePointer<Float>,_ inputStride: Int,_ output: UnsafeMutablePointer<Float>,_ count: Int) {
-        DSPBackend.meanv(input, inputStride, output, count)
-    }
-    
-    static func maxValueIndex(_ input: UnsafePointer<Float>,_ inputStride: Int,_ outputValue: UnsafeMutablePointer<Float>,_ outputIndex: UnsafeMutablePointer<Int>,_ count: Int) -> Void {
-        DSPBackend.maxvi(input, inputStride, outputValue, outputIndex, count)
-    }
-    
-    static func maxValueIndex(_ input: [Float]) -> (UInt, Float) {
-        return DSPBackend.indexOfMaximum(input)
-    }
-    
-    static func desamp(_ input: UnsafePointer<Float>,_ decimationFactor: Int,_ filter: UnsafePointer<Float>,_ output: UnsafeMutablePointer<Float>,_ count: Int,_ filterLength: Int) -> Void {
-        DSPBackend.desamp(input, decimationFactor, filter, output, count, filterLength)
-    }
-    
-    static func convert(_ splitComplexVector: SplitComplexSamples,_ interleavedComplexVector: inout [ComplexSample]) {
-        DSPBackend.convert(splitComplexVector, &interleavedComplexVector)
-    }
-    
-    static func convert(_ interleavedComplexVector: [ComplexSample],_ splitComplexVector: inout SplitComplexSamples) {
-        DSPBackend.convert(interleavedComplexVector, &splitComplexVector)
+    static func window<T>(_ ofType: T, _ usingSequence: WindowFunction, _ count: Int, _ isHalfWindow: Bool) -> [T] where T : FloatingPointGeneratable {
+        switch usingSequence {
+        case .
+        }
     }
     
 }
