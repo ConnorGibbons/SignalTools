@@ -8,6 +8,137 @@ import Foundation
 
 enum GenericBackend: Backend {
     
+//    
+//    protocol BiquadFilter<T> {
+//        associatedtype T: FloatingPointBiquadFilterable
+//        init?(coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type)
+//        mutating func apply(input: [T]) -> [T]
+//    }
+    
+    private struct BiquadState<T> where T: FloatingPointBiquadFilterable {
+        var xLine: (T,T) // Stores the previous two values of the input signal. (x[n-1], x[n-2])
+        var yLine: (T,T) // Stores the previous two values of the output signal. (y[n-1], y[n-2])
+    }
+    
+    // Direct Form 1 from https://en.wikipedia.org/wiki/Digital_biquad_filter
+    private struct BiquadCoefficients {
+        // 'b' values are multiplied by the input signal.
+        let b0: Double
+        let b1: Double
+        let b2: Double
+        // 'a' values are multiplied by the previously output signal.
+        let a1: Double
+        let a2: Double
+    }
+    
+    struct SingleChannelGenericBiquad<T> where T: FloatingPointBiquadFilterable {
+        private var states: [BiquadState<T>]
+        private let coefficients: [BiquadCoefficients]
+        
+        init?(coefficients: [Double], sectionCount: Int, ofType: T.Type) {
+            guard coefficients.count == (5 * sectionCount) else {
+                print("SingleChannelGenericBiquad: Coefficients.count must be 5x sectionCount.")
+                return nil
+            }
+            self.states = .init(repeating: BiquadState.init(xLine: (0,0), yLine: (0,0)), count: sectionCount)
+            self.coefficients = {
+                var coeffs: [BiquadCoefficients] = []
+                for i in stride(from: 0, to: coefficients.count, by: 5) {
+                    coeffs.append(BiquadCoefficients(b0: coefficients[i], b1: coefficients[i+1], b2: coefficients[i+2], a1: coefficients[i+3], a2: coefficients[i+4]))
+                }
+                return coeffs
+            }()
+        }
+        
+        mutating func apply(input: [T]) -> [T] {
+            var outputSignal = input
+            for section in 0..<coefficients.count {
+                var sectionOutput: [T] = .init(repeating: 0.0, count: outputSignal.count)
+                let coeffs = coefficients[section]
+                for i in 0..<outputSignal.count {
+                    let xLine = states[section].xLine
+                    let yLine = states[section].yLine
+                    let term1 = T(coeffs.b0) * outputSignal[i]
+                    let term2 = T(coeffs.b1) * xLine.0
+                    let term3 = T(coeffs.b2) * xLine.1
+                    let term4 = T(coeffs.a1) * yLine.0
+                    let term5 = T(coeffs.a2) * yLine.1
+                    let yCurr = term1 + term2 + term3 - term4 - term5
+                    states[section].xLine = (outputSignal[i],xLine.0)
+                    states[section].yLine = (yCurr,yLine.0)
+                    sectionOutput[i] = yCurr
+                }
+                outputSignal = sectionOutput
+            }
+            return outputSignal
+        }
+    }
+    
+    struct GenericBiquadFilter<T>: BiquadFilter where T: FloatingPointBiquadFilterable {
+        private var channels: [SingleChannelGenericBiquad<T>]
+        
+        init?(coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type) {
+            self.channels = []
+            for _ in 0..<channelCount {
+                guard let newFilter = SingleChannelGenericBiquad<T>(coefficients: coefficients, sectionCount: sectionCount, ofType: T.self) else {
+                    print("GenericBiquadFilter: Failed to create SingleChannelGenericBiquad")
+                    return nil
+                }
+                channels.append(newFilter)
+            }
+        }
+        
+        mutating func apply(input: [T]) -> [T] {
+            guard input.count > 0 else { return [] }
+            var deinterleavedInput = deinterleaveInput(input: input, channelCount: channels.count)
+            guard deinterleavedInput.count == channels.count else {
+                print("GenericBiquadFilter: Failed to deinterleave input across \(channels.count) channels.")
+                return []
+            }
+            
+            var filteredResults: [[T]] = .init(repeating: [], count: channels.count)
+            for channelNum in 0..<channels.count {
+                filteredResults[channelNum] = channels[channelNum].apply(input: deinterleavedInput[channelNum])
+            }
+            return reinterleaveResults(input: filteredResults)
+        }
+        
+        private func deinterleaveInput(input: [T], channelCount: Int) -> [[T]] {
+            guard !input.isEmpty && (input.count % channelCount) == 0 && channelCount > 0 else { return [] }
+            guard channelCount != 1 else { return [input] }
+            var output: [[T]] = Array(repeating: [], count: channelCount)
+            var samplesPerChannel = input.count / channelCount
+            for j in 0..<channelCount {
+                output[j] = .init(repeating: 0.0, count: samplesPerChannel)
+            }
+            var sampleIndex = 0
+            for i in stride(from: 0, to: input.count, by: channelCount) {
+                for n in 0..<channelCount {
+                    output[n][sampleIndex] = input[i + n]
+                }
+                sampleIndex += 1
+            }
+            return output
+        }
+        
+        private func reinterleaveResults(input: [[T]]) -> [T] {
+            guard input.count > 1 else { return input.count == 1 ? input[0] : [] }
+            let totalSamples = input.reduce(0) { $0 + $1.count }
+            var interleavedResult: [T] = .init(repeating: 0.0, count: totalSamples)
+            let channelCount = input.count
+            for (channel, samples) in input.enumerated() {
+                for i in 0..<samples.count {
+                    interleavedResult[channel + (i * channelCount)] = samples[i]
+                }
+            }
+            return interleavedResult
+        }
+    }
+    
+    static func makeBiquad<T>(_ coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type) -> (any BiquadFilter<T>)? where T : FloatingPointBiquadFilterable {
+        return GenericBiquadFilter(coefficients: coefficients, channelCount: channelCount, sectionCount: sectionCount, ofType: ofType)
+    }
+    
     /// Performs convolution / correlation on **signal**.
     /// signalStride: Determines how many elements to advance by in **signal** after each calculation. Must be >= 1.
     /// kernel: The values to multiply with to determine each result.
@@ -243,10 +374,64 @@ enum GenericBackend: Backend {
         }
     }
     
-    static func window<T>(_ ofType: T, _ usingSequence: WindowFunction, _ count: Int, _ isHalfWindow: Bool) -> [T] where T : FloatingPointGeneratable {
+    static func window<T>(_ ofType: T, _ usingSequence: WindowFunction, _ count: Int, _ isHalfWindow: Bool) -> [T] where T: FloatingPointGeneratable {
+        let length = isHalfWindow ? count * 2 : count
+        
+        let result: [T]
         switch usingSequence {
-        case .
+        case .hanningNormalized:
+            result = hanning(length, normalized: true)
+        case .hanningDenormalized:
+            result = hanning(length, normalized: false)
+        case .hamming:
+            result = hamming(length)
+        case .blackman:
+            result = blackman(length)
+        default:
+            print("GenericBackend window type \(usingSequence) not implemented, using blackman instead")
+            result = blackman(length)
         }
+        
+        return isHalfWindow ? Array(result.prefix(count)) : result
     }
+    
+    // Math from: https://en.wikipedia.org/wiki/Hann_function
+    private static func hanning<T>(_ count: Int, normalized: Bool) -> [T] where T: FloatingPointGeneratable {
+        guard count > 0 else { return [] }
+        var result: [T] = .init(repeating: 0.0, count: count)
+        let divisor: T = normalized ? T(count) : T(count) - 1.0
+        for i in 0..<count {
+            let innerVal = (2*T.pi*T(i)) / divisor
+            let innerValConv: T = T(cos(Double(innerVal)))
+            result[i] = T(0.5) * (T(1.0) - innerValConv)
+        }
+        return result
+    }
+    
+    // Math from: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.hamming.html
+    private static func hamming<T>(_ count: Int) -> [T] where T: FloatingPointGeneratable {
+        guard count > 1 else { return count == 1 ? [T(1.0)] : [] }
+        var result: [T] = .init(repeating: 0.0, count: count)
+        for i in 0..<count {
+            let innerVal = (2 * T.pi * T(i)) / (T(count) - 1)
+            let innerValConv: T = T(cos(Double(innerVal)))
+            result[i] = T(0.54) - (T(0.46) * innerValConv)
+        }
+        return result
+    }
+    
+    // Math from: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.blackman.html
+    private static func blackman<T>(_ count: Int) -> [T] where T: FloatingPointGeneratable {
+        guard count > 1 else { return count == 1 ? [T(1.0)] : [] }
+        var result: [T] = .init(repeating: 0.0, count: count)
+        for i in 0..<count {
+            let innerVal = (2 * T.pi * T(i)) / (T(count) - 1)
+            let cosVal1: T = T(cos(Double(innerVal)))
+            let cosVal2: T = T(cos(Double(2 * innerVal)))
+            result[i] = T(0.42) - (T(0.5) * cosVal1) + (T(0.08) * cosVal2)
+        }
+        return result
+    }
+    
     
 }

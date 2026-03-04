@@ -13,6 +13,30 @@ typealias DSPBackend = AccelerateBackend
 typealias DSPBackend = GenericBackend
 #endif
 
+//public struct Biquad<T> where T : vDSP_FloatingPointBiquadFilterable {
+//
+//    /// Initializes a new single or multichannel cascaded biquad IIR structure.
+//    ///
+//    /// - Parameter coefficients: Array of double-precision real coefficients. Its length should be 5 times the number of sections in the biquad filter.
+//    /// - Parameter sectionCount: The number of sections in the biquad filter. The same number of sections is used for each channel, so only one value is specified.
+//    /// - Parameter channelCount: The number of input/output channels.
+//    /// - Parameter ofType: Specifies single- or double-precision.
+//    public init?(coefficients: [Double], channelCount: vDSP_Length, sectionCount: vDSP_Length, ofType: T.Type)
+//
+//    /// Applies a single- or double-precision single or multichannel biquad IIR filter, returning the filtered signal.
+//    public mutating func apply<U>(input: U) -> [T] where T == U.Element, U : AccelerateBuffer
+//
+//    /// Applies a single- or double-precision single or multichannel biquad IIR filter, overwriting the supplied output.
+//    public mutating func apply<U, V>(input: U, output: inout V) where T == U.Element, U : AccelerateBuffer, V : AccelerateMutableBuffer, U.Element == V.Element
+//}
+
+protocol BiquadFilter<T> {
+    associatedtype T: FloatingPointBiquadFilterable
+    init?(coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type)
+    mutating func apply(input: [T]) -> [T]
+}
+
+
 protocol Backend {
     static func conv(_ signal: UnsafePointer<Float>, _ signalStride: Int, _ kernel: UnsafePointer<Float>, _ kernelStride: Int, _ result: UnsafeMutablePointer<Float>, _ resultStride: Int, _ outputLength: Int, _ kernelLength: Int)
     static func zvmul(_ input1: UnsafePointer<SplitComplexSamples>, _ input1Stride: Int, _ input2: UnsafePointer<SplitComplexSamples>, _ input2Stride: Int, _ output: UnsafeMutablePointer<SplitComplexSamples>, _ outputStride: Int, _ count: Int, _ useConjugate: Int)
@@ -28,6 +52,7 @@ protocol Backend {
     static func convert(_ complexSplitVector: SplitComplexSamples, _ interleavedComplexVector: inout [ComplexSample])
     static func convert(_ interleavedComplexVector: [ComplexSample], _ complexSplitVector: inout SplitComplexSamples)
     static func window<T>(_ ofType: T,_ usingSequence: WindowFunction,_ count: Int,_ isHalfWindow: Bool) -> [T] where T: FloatingPointGeneratable
+    static func makeBiquad<T>(_ coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type) -> (any BiquadFilter<T>)? where T: FloatingPointBiquadFilterable
 }
 
 public enum DSP {

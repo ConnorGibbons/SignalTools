@@ -7,7 +7,33 @@
 
 #if canImport(Accelerate)
 import Accelerate
+
+//protocol BiquadFilter<T> {
+//    associatedtype T: FloatingPointBiquadFilterable
+//    init?(coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type)
+//    mutating func apply(input: [T]) -> [T]
+//}
+
 enum AccelerateBackend: Backend {
+    
+    /// AccelerateBackend wrapper for vDSP.Biquad
+    struct AccelerateBiquad<T>: BiquadFilter where T: FloatingPointBiquadFilterable {
+        var vDSPBiquad: vDSP.Biquad<T>
+        
+        init?(coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type) {
+            guard let vDSPBQuad = vDSP.Biquad(coefficients: coefficients, channelCount: vDSP_Length(channelCount), sectionCount: vDSP_Length(sectionCount), ofType: ofType) else { return nil }
+            self.vDSPBiquad = vDSPBQuad
+        }
+        
+        mutating func apply(input: [T]) -> [T] {
+            var output = self.vDSPBiquad.apply(input: input)
+            return output
+        }
+    }
+    
+    static func makeBiquad<T>(_ coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type) -> (any BiquadFilter<T>)? where T : FloatingPointBiquadFilterable {
+        return AccelerateBiquad(coefficients: coefficients, channelCount: channelCount, sectionCount: sectionCount, ofType: ofType)
+    }
     
     static func conv(_ signal: UnsafePointer<Float>, _ signalStride: Int, _ kernel: UnsafePointer<Float>, _ kernelStride: Int, _ result: UnsafeMutablePointer<Float>, _ resultStride: Int, _ outputLength: Int, _ kernelLength: Int) -> Void {
         vDSP_conv(signal, vDSP_Stride(signalStride), kernel, vDSP_Stride(kernelStride), result, vDSP_Stride(resultStride), vDSP_Length(outputLength), vDSP_Length(kernelLength))

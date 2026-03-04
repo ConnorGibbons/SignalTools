@@ -15,6 +15,7 @@ public typealias DoubleComplexSample = DSPDoubleComplex
 public typealias SplitDoubleComplexSamples = DSPDoubleSplitComplex
 public typealias WindowFunction = vDSP.WindowSequence
 public typealias FloatingPointGeneratable = vDSP_FloatingPointGeneratable
+public typealias FloatingPointBiquadFilterable = vDSP_FloatingPointBiquadFilterable
 #else
 struct ComplexSample: Equatable {
     var real: Float
@@ -44,6 +45,8 @@ enum WindowFunction {
 }
 
 protocol FloatingPointGeneratable: BinaryFloatingPoint {}
+
+protocol FloatingPointBiquadFilterable: BinaryFloatingPoint {}
 #endif
 
 public extension ComplexSample {
