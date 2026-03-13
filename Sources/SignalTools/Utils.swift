@@ -8,6 +8,7 @@ import Foundation
 
 // ** Frequency Shifting **
 
+/// Shifts the desired frequency to baseband (0Hz) by multiplying by a 'mixer' signal with the negative of the input frequency.
 public func shiftFrequencyToBaseband(rawIQ: [ComplexSample], result: inout [ComplexSample], frequency: Float, sampleRate: Int) {
     guard rawIQ.count == result.count else {
         return
@@ -31,52 +32,52 @@ public func shiftFrequencyToBaseband(rawIQ: [ComplexSample], result: inout [Comp
         splitResultBuffer.imagp.deallocate()
     }
     
-    DSP.convert(interleavedComplexVector: rawIQ, splitComplexVector: &splitInputBuffer)
-    DSP.convert(interleavedComplexVector: complexMixerArray, splitComplexVector: &splitMixerBuffer)
+    DSP.convert(interleavedComplexVector: rawIQ, toSplitComplexVector: &splitInputBuffer)
+    DSP.convert(interleavedComplexVector: complexMixerArray, toSplitComplexVector: &splitMixerBuffer)
     DSP.multiplySplitComplexVectors(splitInputBuffer, splitMixerBuffer, count: sampleCount, useConjugate: false, result: &splitResultBuffer)
-    DSP.convert(splitComplexVector: splitResultBuffer, interleavedComplexVector: &result)
+    DSP.convert(splitComplexVector: splitResultBuffer, toInterleavedComplexVector: &result)
 }
 
-/// I've found that without using Double internally, weird artifacts can occur.
-/// Fair warning, this is probably a lot slower than the regular shift to baseband function.
+/// Equivalent to shiftFrequencytoBaseband but uses doubles internally instead.
+/// I highly recommend using this over shiftFrequnecyToBaseband. It's slower, but the increased precision prevents artifacts from forming in the output.
 public func shiftFrequencyToBasebandHighPrecision(rawIQ: [ComplexSample], result: inout [ComplexSample], frequency: Float, sampleRate: Int) {
     guard rawIQ.count == result.count else {
         return
     }
     
-    let inputBufferAsDoubleComplex = rawIQ.map { DSPDoubleComplex(real: Double($0.real), imag: Double($0.imag)) }
+    let inputBufferAsDoubleComplex = rawIQ.map { DoubleComplexSample(real: Double($0.real), imag: Double($0.imag)) }
     let sampleCount = rawIQ.count
     let frequenyDouble: Double = Double(frequency)
     let sampleRateDouble: Double = Double(sampleRate)
     let complexMixerArray = (0..<sampleCount).map{ index in
         let angle = -2 * Double.pi * frequenyDouble * Double(index) / sampleRateDouble
-        return DSPDoubleComplex(real: cos(angle), imag: sin(angle))
+        return DoubleComplexSample(real: cos(angle), imag: sin(angle))
     }
     
-    var splitInputBuffer = DSPDoubleSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
-    var splitMixerBuffer = DSPDoubleSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
-    var splitResultBuffer = DSPDoubleSplitComplex(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
+    var splitDoubleInputBuffer = SplitDoubleComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
+    var splitMixerBuffer = SplitDoubleComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
+    var splitDoubleResultBuffer = SplitDoubleComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
     let splitFloatResultBuffer = SplitComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
     defer {
-        splitInputBuffer.realp.deallocate()
-        splitInputBuffer.imagp.deallocate()
+        splitDoubleInputBuffer.realp.deallocate()
+        splitDoubleInputBuffer.imagp.deallocate()
         splitMixerBuffer.realp.deallocate()
         splitMixerBuffer.imagp.deallocate()
-        splitResultBuffer.realp.deallocate()
-        splitResultBuffer.imagp.deallocate()
+        splitDoubleResultBuffer.realp.deallocate()
+        splitDoubleResultBuffer.imagp.deallocate()
         splitFloatResultBuffer.realp.deallocate()
         splitFloatResultBuffer.imagp.deallocate()
     }
-    let splitResultRealBufferPointer: UnsafeBufferPointer<Double> = .init(start: splitResultBuffer.realp, count: sampleCount)
-    let splitResultImagBufferPointer: UnsafeBufferPointer<Double> = .init(start: splitResultBuffer.imagp, count: sampleCount)
+    let splitDoubleResultRealBufferPointer: UnsafeBufferPointer<Double> = .init(start: splitDoubleResultBuffer.realp, count: sampleCount)
+    let splitDoubleResultImagBufferPointer: UnsafeBufferPointer<Double> = .init(start: splitDoubleResultBuffer.imagp, count: sampleCount)
     var splitFloatResultRealBufferPointer: UnsafeMutableBufferPointer<Float> = .init(start: splitFloatResultBuffer.realp, count: sampleCount)
     var splitFloatResultImagBufferPointer: UnsafeMutableBufferPointer<Float> = .init(start: splitFloatResultBuffer.imagp, count: sampleCount)
-    vDSP.convert(interleavedComplexVector: inputBufferAsDoubleComplex, toSplitComplexVector: &splitInputBuffer)
-    vDSP.convert(interleavedComplexVector: complexMixerArray, toSplitComplexVector: &splitMixerBuffer)
-    vDSP.multiply(splitInputBuffer, by: splitMixerBuffer, count: sampleCount, useConjugate: false, result: &splitResultBuffer)
-    vDSP.convertElements(of: splitResultRealBufferPointer, to: &splitFloatResultRealBufferPointer)
-    vDSP.convertElements(of: splitResultImagBufferPointer, to: &splitFloatResultImagBufferPointer)
-    vDSP.convert(splitComplexVector: splitFloatResultBuffer, toInterleavedComplexVector: &result)
+    DSP.convert(interleavedComplexVector: inputBufferAsDoubleComplex, toSplitComplexVector: &splitDoubleInputBuffer)
+    DSP.convert(interleavedComplexVector: complexMixerArray, toSplitComplexVector: &splitMixerBuffer)
+    DSP.multiplyComplexVectors(splitDoubleInputBuffer, by: splitMixerBuffer, count: sampleCount, useConjugate: false, result: &splitDoubleResultBuffer)
+    DSP.convertElements(of: splitDoubleResultRealBufferPointer, to: &splitFloatResultRealBufferPointer)
+    DSP.convertElements(of: splitDoubleResultImagBufferPointer, to: &splitFloatResultImagBufferPointer)
+    DSP.convert(splitComplexVector: splitFloatResultBuffer, toInterleavedComplexVector: &result)
 }
 
 

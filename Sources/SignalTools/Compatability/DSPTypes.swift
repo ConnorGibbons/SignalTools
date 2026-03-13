@@ -49,6 +49,13 @@ protocol FloatingPointGeneratable: BinaryFloatingPoint {}
 protocol FloatingPointBiquadFilterable: BinaryFloatingPoint {}
 #endif
 
+public protocol BiquadFilter<T> {
+    associatedtype T: FloatingPointBiquadFilterable
+    init?(coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type)
+    mutating func apply(input: [T]) -> [T]
+    mutating func apply(input: [T], output: inout [T])
+}
+
 public extension ComplexSample {
     func magnitude() -> Float {
         return ((real * real) + (imag * imag)).squareRoot()

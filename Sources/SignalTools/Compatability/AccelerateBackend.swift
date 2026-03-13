@@ -94,6 +94,14 @@ enum AccelerateBackend: Backend {
         vDSP.convert(interleavedComplexVector: interleavedComplexVector, toSplitComplexVector: &complexSplitVector)
     }
     
+    static func convert(_ complexSplitVector: SplitDoubleComplexSamples,_ interleavedComplexVector: inout [DoubleComplexSample]) {
+        vDSP.convert(splitComplexVector: complexSplitVector, toInterleavedComplexVector: &interleavedComplexVector)
+    }
+    
+    static func convert(_ interleavedComplexVector: [DoubleComplexSample],_ complexSplitVector: inout SplitDoubleComplexSamples) {
+        vDSP.convert(interleavedComplexVector: interleavedComplexVector, toSplitComplexVector: &complexSplitVector)
+    }
+    
     static func window<T>(_ ofType: T.Type, _ usingSequence: WindowFunction, _ count: Int, _ isHalfWindow: Bool) -> [T] where T : FloatingPointGeneratable {
         vDSP.window(ofType: T.self, usingSequence: usingSequence, count: count, isHalfWindow: isHalfWindow)
     }

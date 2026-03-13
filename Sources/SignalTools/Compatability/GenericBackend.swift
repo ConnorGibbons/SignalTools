@@ -365,11 +365,28 @@ enum GenericBackend: Backend {
         }
     }
     
+    static func convert(_ complexSplitVector: SplitDoubleComplexSamples,_ interleavedComplexVector: inout [DoubleComplexSample]) {
+        let count = interleavedComplexVector.count
+        for i in 0..<count {
+            interleavedComplexVector[i] = DoubleComplexSample(real: complexSplitVector.realp[i], imag: complexSplitVector.imagp[i])
+        }
+    }
+    
     /// Converts [ComplexSample] to SplitComplexSamples.
     /// interleavedComplexVector: [ComplexSample] to convert
     /// complexSplitVector: Will store the SplitComplexSamples result.
     /// Note: Make sure that complexSplitVector has memory allocated beforehand, at least enough to store interleavedComplexVector.count in both realp and imagp.
-    static func convert(_ interleavedComplexVector: [ComplexSample], _ complexSplitVector: inout SplitComplexSamples) {
+    static func convert(_ interleavedComplexVector: [ComplexSample],_ complexSplitVector: inout SplitComplexSamples) {
+        let count = interleavedComplexVector.count
+        complexSplitVector.realp.deinitialize(count: count)
+        complexSplitVector.imagp.deinitialize(count: count)
+        for i in 0..<count {
+            complexSplitVector.imagp[i] = interleavedComplexVector[i].imag
+            complexSplitVector.realp[i] = interleavedComplexVector[i].real
+        }
+    }
+    
+    static func convert(_ interleavedComplexVector: [DoubleComplexSample],_ complexSplitVector: inout SplitDoubleComplexSamples) {
         let count = interleavedComplexVector.count
         complexSplitVector.realp.deinitialize(count: count)
         complexSplitVector.imagp.deinitialize(count: count)

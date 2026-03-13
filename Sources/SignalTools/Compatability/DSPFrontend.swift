@@ -13,14 +13,6 @@ typealias DSPBackend = AccelerateBackend
 typealias DSPBackend = GenericBackend
 #endif
 
-public protocol BiquadFilter<T> {
-    associatedtype T: FloatingPointBiquadFilterable
-    init?(coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type)
-    mutating func apply(input: [T]) -> [T]
-    mutating func apply(input: [T], output: inout [T])
-}
-
-
 protocol Backend {
     static func conv(_ signal: UnsafePointer<Float>, _ signalStride: Int, _ kernel: UnsafePointer<Float>, _ kernelStride: Int, _ result: UnsafeMutablePointer<Float>, _ resultStride: Int, _ outputLength: Int, _ kernelLength: Int)
     static func zvmul(_ input1: UnsafePointer<SplitComplexSamples>, _ input1Stride: Int, _ input2: UnsafePointer<SplitComplexSamples>, _ input2Stride: Int, _ output: UnsafeMutablePointer<SplitComplexSamples>, _ outputStride: Int, _ count: Int, _ useConjugate: Int)
@@ -35,6 +27,8 @@ protocol Backend {
     static func desamp(_ input: UnsafePointer<Float>, _ decimationFactor: Int, _ filter: UnsafePointer<Float>, _ output: UnsafeMutablePointer<Float>, _ count: Int, _ filterLength: Int)
     static func convert(_ complexSplitVector: SplitComplexSamples, _ interleavedComplexVector: inout [ComplexSample])
     static func convert(_ interleavedComplexVector: [ComplexSample], _ complexSplitVector: inout SplitComplexSamples)
+    static func convert(_ complexSplitVector: SplitDoubleComplexSamples, _ interleavedComplexVector: inout [DoubleComplexSample])
+    static func convert(_ interleavedComplexVector: [DoubleComplexSample], _ complexSplitVector: inout SplitDoubleComplexSamples)
     static func window<T>(_ ofType: T.Type,_ usingSequence: WindowFunction,_ count: Int,_ isHalfWindow: Bool) -> [T] where T: FloatingPointGeneratable
     static func makeBiquad<T>(_ coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type) -> (any BiquadFilter<T>)? where T: FloatingPointBiquadFilterable
 }
@@ -107,6 +101,15 @@ public enum DSP {
     static func convert(interleavedComplexVector: [ComplexSample], toSplitComplexVector: inout SplitComplexSamples) {
         DSPBackend.convert(interleavedComplexVector, &toSplitComplexVector)
     }
+    
+    static func convert(splitComplexVector: SplitDoubleComplexSamples, toInterleavedComplexVector: inout [DoubleComplexSample]) {
+        DSPBackend.convert(splitComplexVector, &toInterleavedComplexVector)
+    }
+    
+    static func convert(interleavedComplexVector: [DoubleComplexSample], toSplitComplexVector: inout SplitDoubleComplexSamples) {
+        DSPBackend.convert(interleavedComplexVector, &toSplitComplexVector)
+    }
+    
     
     static func window<T>(ofType: T.Type, usingSequence: WindowFunction, count: Int, isHalfWindow: Bool) -> [T] where T: FloatingPointGeneratable {
         DSPBackend.window(ofType, usingSequence, count, isHalfWindow)
