@@ -19,7 +19,8 @@ public enum FilterType {
 // Class representing cascading biquad IIR filter
 public class IIRFilter: Filter {
     var params: [FilterParameter]
-    var biquad: vDSP.Biquad<Float>?
+    var filterInitialized: Bool = false
+    var biquad: (any BiquadFilter<Float>)?
     
     public init() {
         params = []
@@ -28,6 +29,7 @@ public class IIRFilter: Filter {
     public func addCustomParams(_ params: [FilterParameter]) -> IIRFilter {
         self.params.append(contentsOf: params)
         biquad = nil
+        filterInitialized = false
         return self
     }
     
@@ -44,14 +46,14 @@ public class IIRFilter: Filter {
     }
     
     public func filteredSignal(_ input: inout [Float]) {
-        if biquad == nil {
+        if !filterInitialized {
             initBiquad()
         }
         biquad!.apply(input: input, output: &input)
     }
     
     public func filteredSignal(_ input: inout [ComplexSample]) {
-        if biquad == nil {
+        if !filterInitialized {
             initBiquad()
         }
         var real = [Float].init(repeating: 0.0, count: input.count)
@@ -59,7 +61,7 @@ public class IIRFilter: Filter {
         real.withUnsafeMutableBufferPointer { r in
             imag.withUnsafeMutableBufferPointer { i in
                 var splitComplex = SplitComplexSamples(realp: r.baseAddress!, imagp: i.baseAddress!)
-                vDSP.convert(interleavedComplexVector: input, toSplitComplexVector: &splitComplex)
+                DSP.convert(interleavedComplexVector: input, toSplitComplexVector: &splitComplex)
             }
         }
         
@@ -69,9 +71,14 @@ public class IIRFilter: Filter {
         real.withUnsafeMutableBufferPointer { r in
             imag.withUnsafeMutableBufferPointer { i in
                 let splitComplex = SplitComplexSamples(realp: r.baseAddress!, imagp: i.baseAddress!)
-                vDSP.convert(splitComplexVector: splitComplex, toInterleavedComplexVector: &input)
+                DSP.convert(splitComplexVector: splitComplex, toInterleavedComplexVector: &input)
             }
         }
+    }
+    
+    public func resetFilterState() {
+        self.biquad = nil
+        self.filterInitialized = false
     }
     
     private func flattenParams() -> [Double] {
@@ -83,7 +90,12 @@ public class IIRFilter: Filter {
     }
 
     private func initBiquad() {
-        self.biquad = vDSP.Biquad(coefficients: flattenParams(), channelCount: 1, sectionCount: vDSP_Length(params.count), ofType: Float.self)!
+        guard let biquad = DSP.makeBiquad(coefficients: flattenParams(), channelCount: 1, sectionCount: params.count, ofType: Float.self) else {
+            print("IIRFilter: Failed to initialize biquad.")
+            return
+        }
+        self.biquad = biquad
+        self.filterInitialized = true
     }
     
 }
@@ -135,7 +147,8 @@ public class FIRFilter: Filter {
         
         copyToStateBuffer(&input)
         var tempOutputBuffer: [Float] = Array(repeating: 0, count: input.count)
-        vDSP.convolve(workingBuffer, withKernel: taps, result: &tempOutputBuffer)
+        var workingBufferCopy = Array(workingBuffer) // Should really fix this at some point, there is definitely a less expensive way.
+        DSP.convolve(workingBufferCopy, withKernel: taps, result: &tempOutputBuffer)
         input = tempOutputBuffer
     }
     
@@ -153,19 +166,21 @@ public class FIRFilter: Filter {
         let splitComplexOutputBuffer = SplitComplexSamples(realp: .allocate(capacity: input.count), imagp: .allocate(capacity: input.count))
         var realOutputBuffer = UnsafeMutableBufferPointer(start: splitComplexOutputBuffer.realp, count: input.count)
         var imagOutputBuffer = UnsafeMutableBufferPointer(start: splitComplexOutputBuffer.imagp, count: input.count)
-        var splitComplexBuffer = SplitComplexSamples(realp: .allocate(capacity: input.count + tapsLength - 1), imagp: .allocate(capacity: input.count + tapsLength - 1))
+        var splitComplexWorkingBuffer = SplitComplexSamples(realp: .allocate(capacity: input.count + tapsLength - 1), imagp: .allocate(capacity: input.count + tapsLength - 1))
         defer {
             splitComplexOutputBuffer.imagp.deallocate()
             splitComplexOutputBuffer.realp.deallocate()
-            splitComplexBuffer.imagp.deallocate()
-            splitComplexBuffer.realp.deallocate()
+            splitComplexWorkingBuffer.imagp.deallocate()
+            splitComplexWorkingBuffer.realp.deallocate()
         }
-        let splitComplexBufferRealBranchPointer: UnsafeMutableBufferPointer<Float> = .init(start: splitComplexBuffer.realp, count: input.count + tapsLength - 1)
-        let splitComplexBufferImagBranchPointer: UnsafeMutableBufferPointer<Float> = .init(start: splitComplexBuffer.imagp, count: input.count + tapsLength - 1)
-        vDSP.convert(interleavedComplexVector: workingBuffer.dropLast(0),  toSplitComplexVector: &splitComplexBuffer) // .dropLast(0) converts pointer to array (not sure if this results in a copy)
-        vDSP.convolve(splitComplexBufferRealBranchPointer, withKernel: taps, result: &realOutputBuffer)
-        vDSP.convolve(splitComplexBufferImagBranchPointer, withKernel: taps, result: &imagOutputBuffer)
-        vDSP.convert(splitComplexVector: splitComplexOutputBuffer, toInterleavedComplexVector: &input)
+        let splitComplexBufferRealBranchPointer: UnsafeMutableBufferPointer<Float> = .init(start: splitComplexWorkingBuffer.realp, count: input.count + tapsLength - 1)
+        let splitComplexBufferImagBranchPointer: UnsafeMutableBufferPointer<Float> = .init(start: splitComplexWorkingBuffer.imagp, count: input.count + tapsLength - 1)
+        // I don't really know why this .dropLast(0) hack works, but for some reason .dropLast returns a [ComplexSample] in this case instead of an ArraySlice<ComplexSample>
+        // It might be an overload on .dropLast by [DSPComplex]. It's possible this line could cause this to not compile on Linux as a result.
+        DSP.convert(interleavedComplexVector: workingBuffer.dropLast(0),  toSplitComplexVector: &splitComplexWorkingBuffer)
+        DSP.convolve(splitComplexBufferRealBranchPointer, withKernel: self.taps, result: realOutputBuffer)
+        DSP.convolve(splitComplexBufferImagBranchPointer, withKernel: self.taps, result: imagOutputBuffer)
+        DSP.convert(splitComplexVector: splitComplexOutputBuffer, toInterleavedComplexVector: &input)
     }
     
     public func filtfilt(_ input: inout [ComplexSample]) {
@@ -231,8 +246,8 @@ public class FilterParameter {
         }
     }
     
-    public func getvDSPBiquad() -> vDSP.Biquad<Float> {
-        return vDSP.Biquad(coefficients: [b0, b1, b2, a1, a2], channelCount: 1, sectionCount: 1, ofType: Float.self)!
+    public func getvDSPBiquad() -> (any BiquadFilter<Float>) {
+        return DSP.makeBiquad(coefficients: [b0, b1, b2, a1, a2], channelCount: 1, sectionCount: 1, ofType: Float.self)!
     }
 }
 
@@ -269,7 +284,7 @@ public class HighPassFilterParameter: FilterParameter {
 }
 
 // Generates a finite impulse response lowpass filter given a cutoff frequency, sampleRate, and optionally a windowing func
-public func makeFIRLowpassTaps(length: Int, cutoff: Double, sampleRate: Int, windowSequence: vDSP.WindowSequence = .hamming) -> [Float] {
+public func makeFIRLowpassTaps(length: Int, cutoff: Double, sampleRate: Int, windowSequence: WindowFunction = .hamming) -> [Float] {
     let sampleRateAsDouble = Double(sampleRate)
     precondition(length > 0, "Filter length must be > 0")
     precondition(cutoff > 0 && cutoff < sampleRateAsDouble / 2, "Cutoff must be between 0 Hz and Nyquist")
@@ -277,10 +292,10 @@ public func makeFIRLowpassTaps(length: Int, cutoff: Double, sampleRate: Int, win
     let cutoffNormalized = cutoff / sampleRateAsDouble // Now in cycles/sample
     let sincCoeff = 2 * cutoffNormalized
     var sincVals = sinc(count: length, coeff: sincCoeff).map { Float(2 * cutoffNormalized) * Float($0) }
-    let window = vDSP.window(ofType: Float.self, usingSequence: windowSequence, count: length, isHalfWindow: false)
-    vDSP.multiply(window, sincVals, result: &sincVals)
+    let window = DSP.window(ofType: Float.self, usingSequence: windowSequence, count: length, isHalfWindow: false)
+    DSP.multiplyRealVectors(window, sincVals, result: &sincVals)
     let sum = sincVals.reduce(0, +)
-    vDSP.divide(sincVals, sum, result: &sincVals)
+    DSP.divideByScalar(sincVals, sum, result: &sincVals)
     return sincVals
 }
 

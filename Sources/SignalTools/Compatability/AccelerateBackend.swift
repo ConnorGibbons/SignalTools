@@ -29,6 +29,11 @@ enum AccelerateBackend: Backend {
             var output = self.vDSPBiquad.apply(input: input)
             return output
         }
+        
+        mutating func apply(input: [T], output: inout [T]) {
+            self.vDSPBiquad.apply(input: input, output: &output)
+        }
+        
     }
     
     static func makeBiquad<T>(_ coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type) -> (any BiquadFilter<T>)? where T : FloatingPointBiquadFilterable {
@@ -89,7 +94,7 @@ enum AccelerateBackend: Backend {
         vDSP.convert(interleavedComplexVector: interleavedComplexVector, toSplitComplexVector: &complexSplitVector)
     }
     
-    static func window<T>(_ ofType: T, _ usingSequence: WindowFunction, _ count: Int, _ isHalfWindow: Bool) -> [T] where T : FloatingPointGeneratable {
+    static func window<T>(_ ofType: T.Type, _ usingSequence: WindowFunction, _ count: Int, _ isHalfWindow: Bool) -> [T] where T : FloatingPointGeneratable {
         vDSP.window(ofType: T.self, usingSequence: usingSequence, count: count, isHalfWindow: isHalfWindow)
     }
     

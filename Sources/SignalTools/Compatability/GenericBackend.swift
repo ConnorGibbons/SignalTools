@@ -75,6 +75,7 @@ enum GenericBackend: Backend {
     }
     
     struct GenericBiquadFilter<T>: BiquadFilter where T: FloatingPointBiquadFilterable {
+
         private var channels: [SingleChannelGenericBiquad<T>]
         
         init?(coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type) {
@@ -101,6 +102,10 @@ enum GenericBackend: Backend {
                 filteredResults[channelNum] = channels[channelNum].apply(input: deinterleavedInput[channelNum])
             }
             return reinterleaveResults(input: filteredResults)
+        }
+        
+        mutating func apply(input: [T], output: inout [T]) {
+            output = apply(input: input)
         }
         
         private func deinterleaveInput(input: [T], channelCount: Int) -> [[T]] {
@@ -374,7 +379,7 @@ enum GenericBackend: Backend {
         }
     }
     
-    static func window<T>(_ ofType: T, _ usingSequence: WindowFunction, _ count: Int, _ isHalfWindow: Bool) -> [T] where T: FloatingPointGeneratable {
+    static func window<T>(_ ofType: T.Type, _ usingSequence: WindowFunction, _ count: Int, _ isHalfWindow: Bool) -> [T] where T: FloatingPointGeneratable {
         let length = isHalfWindow ? count * 2 : count
         
         let result: [T]

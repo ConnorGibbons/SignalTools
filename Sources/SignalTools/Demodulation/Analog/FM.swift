@@ -46,8 +46,8 @@ public func demodulateFM(_ samples: [ComplexSample]) -> [Float] {
                     var A: SplitComplexSamples = .init(realp: UnsafeMutablePointer(mutating: i0), imagp: UnsafeMutablePointer(mutating: q0)) // prev
                     var B: SplitComplexSamples = .init(realp: UnsafeMutablePointer(mutating: i1), imagp: UnsafeMutablePointer(mutating: q1)) // curr
                     var C: SplitComplexSamples = .init(realp: tempRealPtr.baseAddress!, imagp: tempImPtr.baseAddress!)
-                    DSP.multiplyComplexVectors(&A, stride, &B, stride, &C, 1, n, true)
-                    DSP.phase(&C, shortStride, &diffs, shortStride, n)
+                    DSP.multiplyComplexVectors(input1: &A, input1Stride: stride,input2: &B,input2Stride: stride, output: &C, outputStride: 1, count: n, useConjugate: true)
+                    DSP.phase(input: &C, inputStride: shortStride, output: &diffs, outputStride: shortStride, count: n)
                 }
             }
         }

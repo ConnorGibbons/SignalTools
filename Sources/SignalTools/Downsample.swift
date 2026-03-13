@@ -126,7 +126,7 @@ public func downsampleComplex(iqData: [ComplexSample], decimationFactor: Int, fi
         splitComplexData.realp.deallocate()
         splitComplexData.imagp.deallocate()
     }
-    DSP.convert(interleavedComplexVector: iqData, splitComplexVector: &splitComplexData)
+    DSP.convert(interleavedComplexVector: iqData, toSplitComplexVector: &splitComplexData)
     let iBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.realp, count: iqData.count)
     let qBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.imagp, count: iqData.count)
     let iBranchArray: [Float] = Array(iBranchBufferPointer)
@@ -137,7 +137,7 @@ public func downsampleComplex(iqData: [ComplexSample], decimationFactor: Int, fi
     return iBranchDownsampled.withUnsafeMutableBufferPointer { iDownsampledBufferPointer in
         qBranchDownsampled.withUnsafeMutableBufferPointer { qDownsampledBufferPointer in
             let splitDownsampledData = SplitComplexSamples(realp: iDownsampledBufferPointer.baseAddress!, imagp: qDownsampledBufferPointer.baseAddress!)
-            DSP.convert(splitComplexVector: splitDownsampledData, interleavedComplexVector: &returnVector)
+            DSP.convert(splitComplexVector: splitDownsampledData, toInterleavedComplexVector: &returnVector)
             return returnVector
         }
     }
