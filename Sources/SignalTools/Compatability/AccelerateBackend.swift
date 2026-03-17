@@ -48,6 +48,10 @@ enum AccelerateBackend: Backend {
         vDSP_zvmul(input1, vDSP_Stride(input1Stride), input2, vDSP_Stride(input2Stride), output, vDSP_Stride(outputStride), vDSP_Length(count), Int32(useConjugate))
     }
     
+    static func zvmulD(_ input1: UnsafePointer<SplitDoubleComplexSamples>,_ input1Stride: Int,_ input2: UnsafePointer<SplitDoubleComplexSamples>,_ input2Stride: Int,_ output: UnsafeMutablePointer<SplitDoubleComplexSamples>,_ outputStride: Int, _ count: Int, _ useConjugate: Int) -> Void {
+        vDSP_zvmulD(input1, vDSP_Stride(input1Stride), input2, vDSP_Stride(input2Stride), output, vDSP_Stride(outputStride), vDSP_Length(count), Int32(useConjugate))
+    }
+    
     static func multiply(_ input1: [Float],_ input2: [Float],_ result: inout [Float]) {
         vDSP.multiply(input1, input2, result: &result)
     }

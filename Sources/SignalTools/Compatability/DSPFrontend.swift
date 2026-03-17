@@ -16,6 +16,7 @@ typealias DSPBackend = GenericBackend
 protocol Backend {
     static func conv(_ signal: UnsafePointer<Float>, _ signalStride: Int, _ kernel: UnsafePointer<Float>, _ kernelStride: Int, _ result: UnsafeMutablePointer<Float>, _ resultStride: Int, _ outputLength: Int, _ kernelLength: Int)
     static func zvmul(_ input1: UnsafePointer<SplitComplexSamples>, _ input1Stride: Int, _ input2: UnsafePointer<SplitComplexSamples>, _ input2Stride: Int, _ output: UnsafeMutablePointer<SplitComplexSamples>, _ outputStride: Int, _ count: Int, _ useConjugate: Int)
+    static func zvmulD(_ input1: UnsafePointer<SplitDoubleComplexSamples>, _ input1Stride: Int, _ input2: UnsafePointer<SplitDoubleComplexSamples>, _ input2Stride: Int, _ output: UnsafeMutablePointer<SplitDoubleComplexSamples>, _ outputStride: Int, _ count: Int, _ useConjugate: Int)
     static func multiply(_ input1: [Float], _ input2: [Float], _ result: inout [Float])
     static func multiply(_ input1: SplitComplexSamples, _ input2: SplitComplexSamples, _ count: Int, _ useConjugate: Bool, _ result: inout SplitComplexSamples)
     static func multiply(_ scalar: Float, _ input: [Float]) -> [Float]
@@ -56,6 +57,10 @@ public enum DSP {
     
     static func multiplyComplexVectors(input1: UnsafePointer<SplitComplexSamples>, input1Stride: Int, input2: UnsafePointer<SplitComplexSamples>, input2Stride: Int, output: UnsafeMutablePointer<SplitComplexSamples>, outputStride: Int, count: Int, useConjugate: Bool) {
         DSPBackend.zvmul(input1, input1Stride, input2, input2Stride, output, outputStride, count, useConjugate ? 1 : -1)
+    }
+    
+    static func multiplyComplexVectors(input1: UnsafePointer<SplitDoubleComplexSamples>, input1Stride: Int, input2: UnsafePointer<SplitDoubleComplexSamples>, input2Stride: Int, output: UnsafeMutablePointer<SplitDoubleComplexSamples>, outputStride: Int, count: Int, useConjugate: Bool) {
+        DSPBackend.zvmulD(input1, input1Stride, input2, input2Stride, output, outputStride, count, useConjugate ? 1 : -1)
     }
     
     static func multiplyRealVectors(_ input1: [Float], _ input2: [Float], result: inout [Float]) {
@@ -109,7 +114,6 @@ public enum DSP {
     static func convert(interleavedComplexVector: [DoubleComplexSample], toSplitComplexVector: inout SplitDoubleComplexSamples) {
         DSPBackend.convert(interleavedComplexVector, &toSplitComplexVector)
     }
-    
     
     static func window<T>(ofType: T.Type, usingSequence: WindowFunction, count: Int, isHalfWindow: Bool) -> [T] where T: FloatingPointGeneratable {
         DSPBackend.window(ofType, usingSequence, count, isHalfWindow)

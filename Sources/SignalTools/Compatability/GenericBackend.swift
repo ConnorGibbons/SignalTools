@@ -198,6 +198,26 @@ enum GenericBackend: Backend {
         }
     }
     
+    static func zvmulD(_ input1: UnsafePointer<SplitDoubleComplexSamples>,_ input1Stride: Int,_ input2: UnsafePointer<SplitDoubleComplexSamples>,_ input2Stride: Int,_ output: UnsafeMutablePointer<SplitDoubleComplexSamples>,_ outputStride: Int, _ count: Int, _ useConjugate: Int) -> Void {
+        guard input1Stride > 0 && input2Stride > 0 && outputStride > 0 else {
+            print("Invalid parameters for zvmulD")
+            assertionFailure(); return
+        }
+        for i in 0..<count {
+            let input1Pos = input1Stride * i
+            let input2Pos = input2Stride * i
+            let outputPos = outputStride * i
+            let input1Real = input1.pointee.realp[input1Pos]
+            let input1Imag = input1.pointee.imagp[input1Pos] * (useConjugate == 1 ? -1.0 : 1.0)
+            let input2Real = input2.pointee.realp[input2Pos]
+            let input2Imag = input2.pointee.imagp[input2Pos]
+            let outputReal = input1Real*input2Real - input1Imag*input2Imag
+            let outputImag = input1Real*input2Imag + input1Imag*input2Real
+            output.pointee.realp[outputPos] = outputReal
+            output.pointee.imagp[outputPos] = outputImag
+        }
+    }
+    
     static func multiply(_ input1: [Float],_ input2: [Float],_ result: inout [Float]) {
         let shortestLength = min(min(input1.count,input2.count),result.count)
         guard shortestLength > 0 else {
