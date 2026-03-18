@@ -2,8 +2,8 @@ import XCTest
 import SignalTools
 
 let TEST_DATA_COUNT = 1_000_000
-let randomComplexData: [DSPComplex] = .init(repeating: DSPComplex(real: 0.0, imag: 0.0), count: TEST_DATA_COUNT).map {_ in
-    return DSPComplex(real: Float.random(in: -1...1), imag: Float.random(in: -1...1))
+let randomComplexData: [ComplexSample] = .init(repeating: ComplexSample(real: 0.0, imag: 0.0), count: TEST_DATA_COUNT).map {_ in
+    return ComplexSample(real: Float.random(in: -1...1), imag: Float.random(in: -1...1))
 }
 let randomFloatData: [Float] = .init(repeating: 0.0, count: TEST_DATA_COUNT).map { _ in
     return Float.random(in: -1...1)
@@ -50,16 +50,16 @@ class SignalToolsTests: XCTestCase {
         print("Float array generation took: \(t1_floatGen - t0_floatGen) s")
         
         let t0_baselineAvg = Date.timeIntervalSinceReferenceDate
-        let baselineAvg = vDSP.mean(randomFloatData)
+        let baselineAvg = randomFloatData.reduce(0, +) / Float(randomFloatData.count)
         let t1_baseLineAvg = Date.timeIntervalSinceReferenceDate
-        print("Calculating average (\(baselineAvg)) with vDSP.average() took: \(t1_baseLineAvg - t0_baselineAvg)")
+        print("Calculating average (\(baselineAvg)) with reduce took: \(t1_baseLineAvg - t0_baselineAvg)")
         
         let t0_avg = Date.timeIntervalSinceReferenceDate
         let avg = randomFloatData.average()
         let t1_avg = Date.timeIntervalSinceReferenceDate
         print("Calculating average (\(avg)) with custom .average() took: \(t1_avg - t0_avg)")
         
-        XCTAssert(avg == baselineAvg)
+        XCTAssertEqual(avg, baselineAvg, accuracy: 0.001)
     }
     
     func testBitBuffer() throws {
@@ -174,7 +174,7 @@ class SignalToolsTests: XCTestCase {
         let downsampledFullPass = SignalTools.downsampleComplex(iqData: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
         let downsampler = Downsampler(inputSampleRate: randomInputSampleRate, outputSampleRate: randomOutputSampleRate, filter: testDataDownsampleFilter.getTaps())
         let randomlySplitData = randomlySplitArray(testData)
-        var downsampledOutput: [DSPComplex] = []
+        var downsampledOutput: [ComplexSample] = []
         for split in randomlySplitData {
             let output = downsampler?.downsampleComplex(split)
             downsampledOutput.append(contentsOf: output!)

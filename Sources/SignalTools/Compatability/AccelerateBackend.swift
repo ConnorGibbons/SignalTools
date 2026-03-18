@@ -26,7 +26,7 @@ enum AccelerateBackend: Backend {
         }
         
         mutating func apply(input: [T]) -> [T] {
-            var output = self.vDSPBiquad.apply(input: input)
+            let output = self.vDSPBiquad.apply(input: input)
             return output
         }
         
@@ -41,7 +41,11 @@ enum AccelerateBackend: Backend {
     }
     
     static func conv(_ signal: UnsafePointer<Float>, _ signalStride: Int, _ kernel: UnsafePointer<Float>, _ kernelStride: Int, _ result: UnsafeMutablePointer<Float>, _ resultStride: Int, _ outputLength: Int, _ kernelLength: Int) -> Void {
-        vDSP_conv(signal, vDSP_Stride(signalStride), kernel, vDSP_Stride(kernelStride), result, vDSP_Stride(resultStride), vDSP_Length(outputLength), vDSP_Length(kernelLength))
+        // vDSP_conv requires the kernel pointer to point to the last element when
+        // using a negative stride (convolution mode). The caller passes the pointer
+        // at element 0, so we offset it here.
+        let adjustedKernel = kernelStride < 0 ? kernel + (kernelLength - 1) * abs(kernelStride) : kernel
+        vDSP_conv(signal, vDSP_Stride(signalStride), adjustedKernel, vDSP_Stride(kernelStride), result, vDSP_Stride(resultStride), vDSP_Length(outputLength), vDSP_Length(kernelLength))
     }
     
     static func zvmul(_ input1: UnsafePointer<SplitComplexSamples>,_ input1Stride: Int,_ input2: UnsafePointer<SplitComplexSamples>,_ input2Stride: Int,_ output: UnsafeMutablePointer<SplitComplexSamples>,_ outputStride: Int, _ count: Int, _ useConjugate: Int) -> Void {
@@ -104,6 +108,22 @@ enum AccelerateBackend: Backend {
     
     static func convert(_ interleavedComplexVector: [DoubleComplexSample],_ complexSplitVector: inout SplitDoubleComplexSamples) {
         vDSP.convert(interleavedComplexVector: interleavedComplexVector, toSplitComplexVector: &complexSplitVector)
+    }
+    
+    static func convertElements(_ of: UnsafeBufferPointer<Float>, _ to: UnsafeMutableBufferPointer<Double>) {
+        vDSP_vspdp(of.baseAddress!, 1, to.baseAddress!, 1, vDSP_Length(of.count))
+    }
+    
+    static func convertElements(_ of: UnsafeBufferPointer<Double>, _ to: UnsafeMutableBufferPointer<Float>) {
+        vDSP_vdpsp(of.baseAddress!, 1, to.baseAddress!, 1, vDSP_Length(of.count))
+    }
+    
+    static func convertElements(_ of: [Double], _ to: inout [Float]) {
+        vDSP.convertElements(of: of, to: &to)
+    }
+    
+    static func convertElements(_ of: [Float], _ to: inout [Double]) {
+        vDSP.convertElements(of: of, to: &to)
     }
     
     static func window<T>(_ ofType: T.Type, _ usingSequence: WindowFunction, _ count: Int, _ isHalfWindow: Bool) -> [T] where T : FloatingPointGeneratable {

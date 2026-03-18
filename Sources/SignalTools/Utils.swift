@@ -70,13 +70,13 @@ public func shiftFrequencyToBasebandHighPrecision(rawIQ: [ComplexSample], result
     }
     let splitDoubleResultRealBufferPointer: UnsafeBufferPointer<Double> = .init(start: splitDoubleResultBuffer.realp, count: sampleCount)
     let splitDoubleResultImagBufferPointer: UnsafeBufferPointer<Double> = .init(start: splitDoubleResultBuffer.imagp, count: sampleCount)
-    var splitFloatResultRealBufferPointer: UnsafeMutableBufferPointer<Float> = .init(start: splitFloatResultBuffer.realp, count: sampleCount)
-    var splitFloatResultImagBufferPointer: UnsafeMutableBufferPointer<Float> = .init(start: splitFloatResultBuffer.imagp, count: sampleCount)
+    let splitFloatResultRealBufferPointer: UnsafeMutableBufferPointer<Float> = .init(start: splitFloatResultBuffer.realp, count: sampleCount)
+    let splitFloatResultImagBufferPointer: UnsafeMutableBufferPointer<Float> = .init(start: splitFloatResultBuffer.imagp, count: sampleCount)
     DSP.convert(interleavedComplexVector: inputBufferAsDoubleComplex, toSplitComplexVector: &splitDoubleInputBuffer)
     DSP.convert(interleavedComplexVector: complexMixerArray, toSplitComplexVector: &splitMixerBuffer)
-    DSP.multiplyComplexVectors(splitDoubleInputBuffer, by: splitMixerBuffer, count: sampleCount, useConjugate: false, result: &splitDoubleResultBuffer)
-    DSP.convertElements(of: splitDoubleResultRealBufferPointer, to: &splitFloatResultRealBufferPointer)
-    DSP.convertElements(of: splitDoubleResultImagBufferPointer, to: &splitFloatResultImagBufferPointer)
+    DSP.multiplyComplexVectors(input1: &splitDoubleInputBuffer, input1Stride: 1, input2: &splitMixerBuffer, input2Stride: 1, output: &splitDoubleResultBuffer, outputStride: 1, count: sampleCount, useConjugate: false)
+    DSP.convertElements(of: splitDoubleResultRealBufferPointer, to: splitFloatResultRealBufferPointer)
+    DSP.convertElements(of: splitDoubleResultImagBufferPointer, to: splitFloatResultImagBufferPointer)
     DSP.convert(splitComplexVector: splitFloatResultBuffer, toInterleavedComplexVector: &result)
 }
 
@@ -99,7 +99,9 @@ public func timeToSampleIndex(_ time: Double, sampleRate: Int) -> Int {
 /// radians per second / 2pi = freq.
 public func radToFrequency(radDiffs: [Float], sampleRate: Int) -> [Float] {
     let coefficient = Float(sampleRate) / (2 * Float.pi)
-    return vDSP.multiply(coefficient, radDiffs)
+    var frequencyResult: [Float] = .init(repeating: 0.0, count: radDiffs.count)
+    DSP.multiplyByScalar(radDiffs, scalar: coefficient, result: &frequencyResult)
+    return frequencyResult
 }
 
 /// Calculates angle (radians) for each entry in an array of IQ samples.
@@ -109,9 +111,8 @@ public func calculateAngle(rawIQ: [ComplexSample], result: inout [Float]) {
         return
     }
     var splitBuffer = SplitComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
-    vDSP.convert(interleavedComplexVector: rawIQ, toSplitComplexVector: &splitBuffer)
-    vDSP.phase(splitBuffer, result: &result)
-    
+    DSP.convert(interleavedComplexVector: rawIQ, toSplitComplexVector: &splitBuffer)
+    DSP.phase(input: splitBuffer, result: &result)
     splitBuffer.realp.deallocate()
     splitBuffer.imagp.deallocate()
 }

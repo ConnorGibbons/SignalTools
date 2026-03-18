@@ -7,7 +7,6 @@
 import Foundation
 
 enum GenericBackend: Backend {
-    
 //    
 //    protocol BiquadFilter<T> {
 //        associatedtype T: FloatingPointBiquadFilterable
@@ -91,7 +90,7 @@ enum GenericBackend: Backend {
         
         mutating func apply(input: [T]) -> [T] {
             guard input.count > 0 else { return [] }
-            var deinterleavedInput = deinterleaveInput(input: input, channelCount: channels.count)
+            let deinterleavedInput = deinterleaveInput(input: input, channelCount: channels.count)
             guard deinterleavedInput.count == channels.count else {
                 print("GenericBiquadFilter: Failed to deinterleave input across \(channels.count) channels.")
                 return []
@@ -112,7 +111,7 @@ enum GenericBackend: Backend {
             guard !input.isEmpty && (input.count % channelCount) == 0 && channelCount > 0 else { return [] }
             guard channelCount != 1 else { return [input] }
             var output: [[T]] = Array(repeating: [], count: channelCount)
-            var samplesPerChannel = input.count / channelCount
+            let samplesPerChannel = input.count / channelCount
             for j in 0..<channelCount {
                 output[j] = .init(repeating: 0.0, count: samplesPerChannel)
             }
@@ -188,7 +187,7 @@ enum GenericBackend: Backend {
             let input2Pos = input2Stride * i
             let outputPos = outputStride * i
             let input1Real = input1.pointee.realp[input1Pos]
-            let input1Imag = input1.pointee.imagp[input1Pos] * (useConjugate == 1 ? -1.0 : 1.0)
+            let input1Imag = input1.pointee.imagp[input1Pos] * (useConjugate == -1 ? -1.0 : 1.0)
             let input2Real = input2.pointee.realp[input2Pos]
             let input2Imag = input2.pointee.imagp[input2Pos]
             let outputReal = input1Real*input2Real - input1Imag*input2Imag
@@ -208,7 +207,7 @@ enum GenericBackend: Backend {
             let input2Pos = input2Stride * i
             let outputPos = outputStride * i
             let input1Real = input1.pointee.realp[input1Pos]
-            let input1Imag = input1.pointee.imagp[input1Pos] * (useConjugate == 1 ? -1.0 : 1.0)
+            let input1Imag = input1.pointee.imagp[input1Pos] * (useConjugate == -1 ? -1.0 : 1.0)
             let input2Real = input2.pointee.realp[input2Pos]
             let input2Imag = input2.pointee.imagp[input2Pos]
             let outputReal = input1Real*input2Real - input1Imag*input2Imag
@@ -224,7 +223,7 @@ enum GenericBackend: Backend {
             print("Invalid parameters for multiply")
             assertionFailure(); return
         }
-        for i in 0..<(shortestLength - 1) {
+        for i in 0..<shortestLength {
             result[i] = input1[i] * input2[i]
         }
     }
@@ -236,7 +235,7 @@ enum GenericBackend: Backend {
         }
         var mutableInput1 = input1
         var mutableInput2 = input2
-        GenericBackend.zvmul(&mutableInput1, 1, &mutableInput2, 1, &result, 1, count, useConjugate ? 1 : 0)
+        GenericBackend.zvmul(&mutableInput1, 1, &mutableInput2, 1, &result, 1, count, useConjugate ? -1 : 1)
     }
     
     static func multiply(_ scalar: Float,_ input: [Float]) -> [Float] {
@@ -244,7 +243,9 @@ enum GenericBackend: Backend {
             return []
         }
         var result: [Float] = .init(repeating: 0, count: input.count)
-        GenericBackend.multiply([scalar], input, &result)
+        for i in 0..<input.count {
+            result[i] = input[i] * scalar
+        }
         return result
     }
     
@@ -281,7 +282,7 @@ enum GenericBackend: Backend {
             print("Invalid parameters for normalize")
             assertionFailure(); return
         }
-        var averagePtr: UnsafeMutablePointer<Float> = UnsafeMutablePointer.allocate(capacity: 1); defer { averagePtr.deallocate() }
+        let averagePtr: UnsafeMutablePointer<Float> = UnsafeMutablePointer.allocate(capacity: 1); defer { averagePtr.deallocate() }
         GenericBackend.meanv(input, inputStride, averagePtr, count)
         let average = averagePtr.pointee
         calculatedMean.pointee = average
@@ -340,8 +341,8 @@ enum GenericBackend: Backend {
     }
     
     static func indexOfMaximum(_ input: [Float]) -> (UInt, Float) {
-        var outputIndex: UnsafeMutablePointer<Int> = .allocate(capacity: 1)
-        var outputValue: UnsafeMutablePointer<Float> = .allocate(capacity: 1)
+        let outputIndex: UnsafeMutablePointer<Int> = .allocate(capacity: 1)
+        let outputValue: UnsafeMutablePointer<Float> = .allocate(capacity: 1)
         defer {
             outputIndex.deallocate()
             outputValue.deallocate()
@@ -416,58 +417,111 @@ enum GenericBackend: Backend {
         }
     }
     
+    static func convertElements(_ of: UnsafeBufferPointer<Float>, _ to: UnsafeMutableBufferPointer<Double>) {
+        guard of.count == to.count else {
+            print("Can't convert elements: 'of' and 'to' have different counts. (of: \(of.count)  to: \(to.count))")
+            return
+        }
+        for i in 0..<of.count {
+            to[i] = Double(of[i])
+        }
+    }
+    
+    static func convertElements(_ of: UnsafeBufferPointer<Double>, _ to: UnsafeMutableBufferPointer<Float>) {
+        guard of.count == to.count else {
+            print("Can't convert elements: 'of' and 'to' have different counts. (of: \(of.count)  to: \(to.count))")
+            return
+        }
+        for i in 0..<of.count {
+            to[i] = Float(of[i])
+        }
+    }
+    
+    static func convertElements(_ of: [Float], _ to: inout [Double]) {
+        guard of.count > 0 else { return }
+        if of.count != to.count {
+            to = .init(repeating: 0.0, count: of.count)
+        }
+        for i in 0..<of.count {
+            to[i] = Double(of[i])
+        }
+    }
+    
+    static func convertElements(_ of: [Double], _ to: inout [Float]) {
+        guard of.count > 0 else { return }
+        if of.count != to.count {
+            to = .init(repeating: 0.0, count: of.count)
+        }
+        for i in 0..<of.count {
+            to[i] = Float(of[i])
+        }
+    }
+    
     static func window<T>(_ ofType: T.Type, _ usingSequence: WindowFunction, _ count: Int, _ isHalfWindow: Bool) -> [T] where T: FloatingPointGeneratable {
-        let length = isHalfWindow ? count * 2 : count
-        
-        let result: [T]
+        var result: [T]
         switch usingSequence {
         case .hanningNormalized:
-            result = hanning(length, normalized: true)
+            result = hanning(count, normalized: true)
         case .hanningDenormalized:
-            result = hanning(length, normalized: false)
+            result = hanning(count, normalized: false)
         case .hamming:
-            result = hamming(length)
+            result = hamming(count)
         case .blackman:
-            result = blackman(length)
+            result = blackman(count)
         default:
             print("GenericBackend window type \(usingSequence) not implemented, using blackman instead")
-            result = blackman(length)
+            result = blackman(count)
         }
         
-        return isHalfWindow ? Array(result.prefix(count)) : result
+        if isHalfWindow {
+            // Match vDSP behavior: keep first half, zero out second half
+            let halfCount = (count + 1) / 2
+            for i in halfCount..<count {
+                result[i] = 0
+            }
+        }
+        
+        return result
     }
     
     // Math from: https://en.wikipedia.org/wiki/Hann_function
+    // vDSP uses N (not N-1) as the period for both normalized and denormalized variants.
+    // The normalized variant additionally scales by sqrt(8/3) so the window has unit RMS.
     private static func hanning<T>(_ count: Int, normalized: Bool) -> [T] where T: FloatingPointGeneratable {
         guard count > 0 else { return [] }
         var result: [T] = .init(repeating: 0.0, count: count)
-        let divisor: T = normalized ? T(count) : T(count) - 1.0
+        let N = T(count)
+        let scale: T = normalized ? T(sqrt(8.0 / 3.0)) : T(1.0)
         for i in 0..<count {
-            let innerVal = (2*T.pi*T(i)) / divisor
+            let innerVal = (2 * T.pi * T(i)) / N
             let innerValConv: T = T(cos(Double(innerVal)))
-            result[i] = T(0.5) * (T(1.0) - innerValConv)
+            result[i] = scale * T(0.5) * (T(1.0) - innerValConv)
         }
         return result
     }
     
-    // Math from: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.hamming.html
+    // Math from: https://en.wikipedia.org/wiki/Window_function#Hamming_window
+    // vDSP uses N (not N-1) as the period.
     private static func hamming<T>(_ count: Int) -> [T] where T: FloatingPointGeneratable {
         guard count > 1 else { return count == 1 ? [T(1.0)] : [] }
         var result: [T] = .init(repeating: 0.0, count: count)
+        let N = T(count)
         for i in 0..<count {
-            let innerVal = (2 * T.pi * T(i)) / (T(count) - 1)
+            let innerVal = (2 * T.pi * T(i)) / N
             let innerValConv: T = T(cos(Double(innerVal)))
             result[i] = T(0.54) - (T(0.46) * innerValConv)
         }
         return result
     }
     
-    // Math from: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.blackman.html
+    // Math from: https://en.wikipedia.org/wiki/Window_function#Blackman_window
+    // vDSP uses N (not N-1) as the period.
     private static func blackman<T>(_ count: Int) -> [T] where T: FloatingPointGeneratable {
         guard count > 1 else { return count == 1 ? [T(1.0)] : [] }
         var result: [T] = .init(repeating: 0.0, count: count)
+        let N = T(count)
         for i in 0..<count {
-            let innerVal = (2 * T.pi * T(i)) / (T(count) - 1)
+            let innerVal = (2 * T.pi * T(i)) / N
             let cosVal1: T = T(cos(Double(innerVal)))
             let cosVal2: T = T(cos(Double(2 * innerVal)))
             result[i] = T(0.42) - (T(0.5) * cosVal1) + (T(0.08) * cosVal2)

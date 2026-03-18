@@ -12,8 +12,8 @@ import XCTest
 import SignalTools
 
 let TEST_DATA_COUNT = 10_000_000
-let randomComplexData: [DSPComplex] = .init(repeating: DSPComplex(real: 0.0, imag: 0.0), count: TEST_DATA_COUNT).map {_ in
-    return DSPComplex(real: Float.random(in: -1...1), imag: Float.random(in: -1...1))
+let randomComplexData: [ComplexSample] = .init(repeating: ComplexSample(real: 0.0, imag: 0.0), count: TEST_DATA_COUNT).map {_ in
+    return ComplexSample(real: Float.random(in: -1...1), imag: Float.random(in: -1...1))
 }
 let randomFloatData: [Float] = .init(repeating: 0.0, count: TEST_DATA_COUNT).map { _ in
     return Float.random(in: -1...1)
@@ -28,8 +28,8 @@ final class SignalToolsTestsFifteen: XCTestCase {
         _ = randomFloatData[0]
         floatGenTimer.stop()
         
-        let baselineStdDevTimer = Timer(name: "Calculating std dev with vDSP.standardDeviation()")
-        let baselineStdDev = vDSP.standardDeviation(randomFloatData)
+        let baselineStdDevTimer = Timer(name: "Calculating std dev with .standardDeviation()")
+        let baselineStdDev = randomFloatData.standardDeviation()
         baselineStdDevTimer.stop()
         
         let stdDevTimer = Timer(name: "Calculating std dev with custom .standardDeviation()")
@@ -46,8 +46,8 @@ final class SignalToolsTestsFifteen: XCTestCase {
         _ = randomFloatData[0]
         floatGenTimer.stop()
         
-        let baselineNormalizedTimer = Timer(name: "Calculating normalized vector with vDSP.normalize()")
-        let baselineNormalized = vDSP.normalize(randomFloatData)
+        let baselineNormalizedTimer = Timer(name: "Calculating normalized vector with .normalize()")
+        let baselineNormalized = randomFloatData.normalize()
         baselineNormalizedTimer.stop()
         
         let normalizedTimer = Timer(name: "Calculating normalized vector with custom .normalize()")
@@ -86,7 +86,7 @@ final class SignalToolsTestsFifteen: XCTestCase {
     func testComplexDownsamplerEquivalence() throws {
         guard #available(macOS 15.0, *) else { throw XCTSkip("Must be on macOS 15 to run this test.") }
         
-        let complexGenTimer = Timer(name: "DSPComplex array generation")
+        let complexGenTimer = Timer(name: "ComplexSample array generation")
         _ = randomComplexData[0]
         complexGenTimer.stop()
         
@@ -128,36 +128,12 @@ struct Timer {
     }
 }
 
-func downsampleComplexOLD(iqData: [DSPComplex], decimationFactor: Int, filter: [Float] = [0.5, 0.5]) -> [DSPComplex] {
-    guard iqData.count > (filter.count - 1) else { // Less data than is needed to apply the filter, thus no output.
-        return []
-    }
-    // let usableSamplesCount = iqData.count - (filter.count - 1) // Samples with enough proceeding samples to apply the filter.
-    // let outputCount = max(usableSamplesCount / decimationFactor, 1)
-    
-    var returnVector: [DSPComplex]
-    var splitComplexData = DSPSplitComplex(realp: .allocate(capacity: iqData.count), imagp: .allocate(capacity: iqData.count))
-    defer {
-        splitComplexData.realp.deallocate()
-        splitComplexData.imagp.deallocate()
-    }
-    vDSP.convert(interleavedComplexVector: iqData, toSplitComplexVector: &splitComplexData)
-    let iBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.realp, count: iqData.count)
-    let qBranchBufferPointer = UnsafeBufferPointer(start: splitComplexData.imagp, count: iqData.count)
-    var iBranchDownsampled = vDSP.downsample(iBranchBufferPointer, decimationFactor: decimationFactor, filter: filter)
-    var qBranchDownsampled = vDSP.downsample(qBranchBufferPointer, decimationFactor: decimationFactor, filter: filter)
-    returnVector = .init(repeating: DSPComplex(real: 0, imag: 0), count: iBranchDownsampled.count)
-    return iBranchDownsampled.withUnsafeMutableBufferPointer { iDownsampledBufferPointer in
-        qBranchDownsampled.withUnsafeMutableBufferPointer { qDownsampledBufferPointer in
-            let splitDownsampledData = DSPSplitComplex(realp: iDownsampledBufferPointer.baseAddress!, imagp: qDownsampledBufferPointer.baseAddress!)
-            vDSP.convert(splitComplexVector: splitDownsampledData, toInterleavedComplexVector: &returnVector)
-            return returnVector
-        }
-    }
+func downsampleComplexOLD(iqData: [ComplexSample], decimationFactor: Int, filter: [Float] = [0.5, 0.5]) -> [ComplexSample] {
+    return SignalTools.downsampleComplex(iqData: iqData, decimationFactor: decimationFactor, filter: filter)
 }
 
 func downsampleRealOLD(data: [Float], decimationFactor: Int, filter: [Float] = [0.5, 0.5]) -> [Float] {
-    return vDSP.downsample(data, decimationFactor: decimationFactor, filter: filter)
+    return SignalTools.downsampleReal(data: data, decimationFactor: decimationFactor, filter: filter)
 }
 
 

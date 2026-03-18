@@ -23,6 +23,10 @@ let package = Package(
         .testTarget(
             name: "SignalToolsTestsFifteen",
             dependencies: ["SignalTools"]
+        ),
+        .testTarget(
+            name: "BackendComparisonTests",
+            dependencies: ["SignalTools"]
         )
     ]
 )

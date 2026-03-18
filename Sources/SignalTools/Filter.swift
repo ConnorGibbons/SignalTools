@@ -7,6 +7,11 @@
 
 import Foundation
 
+// This isn't strictly necessary for it to compile, but it silences a warning about .hamming on line 291.
+#if canImport(Accelerate)
+import Accelerate
+#endif
+
 public protocol Filter {
     func filteredSignal( _ input: inout [Float])
     func filteredSignal(_ input: inout [ComplexSample])
@@ -147,7 +152,7 @@ public class FIRFilter: Filter {
         
         copyToStateBuffer(&input)
         var tempOutputBuffer: [Float] = Array(repeating: 0, count: input.count)
-        var workingBufferCopy = Array(workingBuffer) // Should really fix this at some point, there is definitely a less expensive way.
+        let workingBufferCopy = Array(workingBuffer) // Should really fix this at some point, there is definitely a less expensive way.
         DSP.convolve(workingBufferCopy, withKernel: taps, result: &tempOutputBuffer)
         input = tempOutputBuffer
     }
@@ -164,8 +169,8 @@ public class FIRFilter: Filter {
         
         copyToComplexStateBuffer(&input)
         let splitComplexOutputBuffer = SplitComplexSamples(realp: .allocate(capacity: input.count), imagp: .allocate(capacity: input.count))
-        var realOutputBuffer = UnsafeMutableBufferPointer(start: splitComplexOutputBuffer.realp, count: input.count)
-        var imagOutputBuffer = UnsafeMutableBufferPointer(start: splitComplexOutputBuffer.imagp, count: input.count)
+        let realOutputBuffer = UnsafeMutableBufferPointer(start: splitComplexOutputBuffer.realp, count: input.count)
+        let imagOutputBuffer = UnsafeMutableBufferPointer(start: splitComplexOutputBuffer.imagp, count: input.count)
         var splitComplexWorkingBuffer = SplitComplexSamples(realp: .allocate(capacity: input.count + tapsLength - 1), imagp: .allocate(capacity: input.count + tapsLength - 1))
         defer {
             splitComplexOutputBuffer.imagp.deallocate()
@@ -295,7 +300,7 @@ public func makeFIRLowpassTaps(length: Int, cutoff: Double, sampleRate: Int, win
     let window = DSP.window(ofType: Float.self, usingSequence: windowSequence, count: length, isHalfWindow: false)
     DSP.multiplyRealVectors(window, sincVals, result: &sincVals)
     let sum = sincVals.reduce(0, +)
-    DSP.divideByScalar(sincVals, sum, result: &sincVals)
+    DSP.divideByScalar(sincVals, scalar: sum, result: &sincVals)
     return sincVals
 }
 

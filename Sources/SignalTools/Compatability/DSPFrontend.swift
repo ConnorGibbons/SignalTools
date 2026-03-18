@@ -30,6 +30,10 @@ protocol Backend {
     static func convert(_ interleavedComplexVector: [ComplexSample], _ complexSplitVector: inout SplitComplexSamples)
     static func convert(_ complexSplitVector: SplitDoubleComplexSamples, _ interleavedComplexVector: inout [DoubleComplexSample])
     static func convert(_ interleavedComplexVector: [DoubleComplexSample], _ complexSplitVector: inout SplitDoubleComplexSamples)
+    static func convertElements(_ of: UnsafeBufferPointer<Float>,_ to: UnsafeMutableBufferPointer<Double>)
+    static func convertElements(_ of: UnsafeBufferPointer<Double>,_ to: UnsafeMutableBufferPointer<Float>)
+    static func convertElements(_ of: [Float],_ to: inout [Double])
+    static func convertElements(_ of: [Double],_ to: inout [Float])
     static func window<T>(_ ofType: T.Type,_ usingSequence: WindowFunction,_ count: Int,_ isHalfWindow: Bool) -> [T] where T: FloatingPointGeneratable
     static func makeBiquad<T>(_ coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type) -> (any BiquadFilter<T>)? where T: FloatingPointBiquadFilterable
 }
@@ -56,19 +60,23 @@ public enum DSP {
     }
     
     static func multiplyComplexVectors(input1: UnsafePointer<SplitComplexSamples>, input1Stride: Int, input2: UnsafePointer<SplitComplexSamples>, input2Stride: Int, output: UnsafeMutablePointer<SplitComplexSamples>, outputStride: Int, count: Int, useConjugate: Bool) {
-        DSPBackend.zvmul(input1, input1Stride, input2, input2Stride, output, outputStride, count, useConjugate ? 1 : -1)
+        DSPBackend.zvmul(input1, input1Stride, input2, input2Stride, output, outputStride, count, useConjugate ? -1 : 1)
     }
     
     static func multiplyComplexVectors(input1: UnsafePointer<SplitDoubleComplexSamples>, input1Stride: Int, input2: UnsafePointer<SplitDoubleComplexSamples>, input2Stride: Int, output: UnsafeMutablePointer<SplitDoubleComplexSamples>, outputStride: Int, count: Int, useConjugate: Bool) {
-        DSPBackend.zvmulD(input1, input1Stride, input2, input2Stride, output, outputStride, count, useConjugate ? 1 : -1)
+        DSPBackend.zvmulD(input1, input1Stride, input2, input2Stride, output, outputStride, count, useConjugate ? -1 : 1)
     }
     
     static func multiplyRealVectors(_ input1: [Float], _ input2: [Float], result: inout [Float]) {
         DSPBackend.multiply(input1, input2, &result)
     }
     
-    static func divideByScalar(_ vector: [Float], _ scalar: Float, result: inout [Float]) {
+    static func divideByScalar(_ vector: [Float], scalar: Float, result: inout [Float]) {
         result = DSPBackend.multiply(1/scalar, vector)
+    }
+    
+    static func multiplyByScalar(_ vector: [Float], scalar: Float, result: inout [Float]) {
+        result = DSPBackend.multiply(scalar, vector)
     }
     
     static func multiplySplitComplexVectors(_ input1: SplitComplexSamples, _ input2: SplitComplexSamples, count: Int, useConjugate: Bool, result: inout SplitComplexSamples) {
@@ -77,6 +85,16 @@ public enum DSP {
     
     static func phase(input: UnsafePointer<SplitComplexSamples>, inputStride: Int, output: UnsafeMutablePointer<Float>, outputStride: Int, count: Int) {
         DSPBackend.zvphas(input, inputStride, output, outputStride, count)
+    }
+    
+    static func phase(input: SplitComplexSamples, result: inout [Float]) {
+        var tempResult: [Float] = result
+        withUnsafePointer(to: input) { inputPtr in
+            tempResult.withUnsafeMutableBufferPointer { resultBufferPtr in
+                DSPBackend.zvphas(inputPtr, 1, resultBufferPtr.baseAddress!, 1, result.count)
+            }
+        }
+        result = tempResult
     }
     
     static func normalize(input: UnsafePointer<Float>, inputStride: Int, output: UnsafeMutablePointer<Float>, outputStride: Int, calculatedMean: UnsafeMutablePointer<Float>, calculatedStdDev: UnsafeMutablePointer<Float>, count: Int) {
@@ -113,6 +131,22 @@ public enum DSP {
     
     static func convert(interleavedComplexVector: [DoubleComplexSample], toSplitComplexVector: inout SplitDoubleComplexSamples) {
         DSPBackend.convert(interleavedComplexVector, &toSplitComplexVector)
+    }
+    
+    static func convertElements(of: [Float], to: inout [Double]) {
+        DSPBackend.convertElements(of, &to)
+    }
+    
+    static func convertElements(of: [Double], to: inout [Float]) {
+        DSPBackend.convertElements(of, &to)
+    }
+    
+    static func convertElements(of: UnsafeBufferPointer<Float>, to: UnsafeMutableBufferPointer<Double>) {
+        DSPBackend.convertElements(of, to)
+    }
+    
+    static func convertElements(of: UnsafeBufferPointer<Double>, to: UnsafeMutableBufferPointer<Float>) {
+        DSPBackend.convertElements(of, to)
     }
     
     static func window<T>(ofType: T.Type, usingSequence: WindowFunction, count: Int, isHalfWindow: Bool) -> [T] where T: FloatingPointGeneratable {

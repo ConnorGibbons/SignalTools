@@ -37,7 +37,7 @@ public extension [Float] {
         var result: [Int] = .init(repeating: 0, count: k)
         var mutableSelf = self
         for i in 0..<k {
-            let topIndex = Int(DSP.indexOfMaximum(input: self).0)
+            let topIndex = Int(DSP.indexOfMaximum(input: mutableSelf).0)
             result[i] = topIndex
             mutableSelf[topIndex] = -Float.infinity
         }
