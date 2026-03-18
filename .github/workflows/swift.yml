@@ -8,20 +8,17 @@ on:
 
 jobs:
   build:
-    # macos-15 (ARM) macos-13 (x86).
+    # macos-15 only
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, macos-13]
+        os: [macos-15]
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: swift build -v
-      - name: Test (macOS 13 Subset)
-        if: ${{ matrix.os == 'macos-13' }}
-        run: swift test --skip Fifteen
       - name: Test (macOS 15 -- All Tests)
         if: ${{ matrix.os == 'macos-15' }} 
         run: swift test
