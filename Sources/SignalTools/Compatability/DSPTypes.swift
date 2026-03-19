@@ -17,36 +17,57 @@ public typealias WindowFunction = vDSP.WindowSequence
 public typealias FloatingPointGeneratable = vDSP_FloatingPointGeneratable
 public typealias FloatingPointBiquadFilterable = vDSP_FloatingPointBiquadFilterable
 #else
-struct ComplexSample: Equatable {
-    var real: Float
-    var imag: Float
+public struct ComplexSample: Equatable {
+    public var real: Float
+    public var imag: Float
+    public init(real: Float, imag: Float) {
+        self.real = real
+        self.imag = imag
+    }
 }
 
-struct SplitComplexSamples {
-    var realp: UnsafeMutablePointer<Float>
-    var imagp: UnsafeMutablePointer<Float>
+public struct SplitComplexSamples {
+    public var realp: UnsafeMutablePointer<Float>
+    public var imagp: UnsafeMutablePointer<Float>
+    public init(realp: UnsafeMutablePointer<Float>, imagp: UnsafeMutablePointer<Float>) {
+        self.realp = realp
+        self.imagp = imagp
+    }
 }
 
-struct DoubleComplexSample: Equatable {
-    var real: Double
-    var imag: Double
+public struct DoubleComplexSample: Equatable {
+    public var real: Double
+    public var imag: Double
+    public init(real: Double, imag: Double) {
+        self.real = real
+        self.imag = imag
+    }
 }
 
-struct SplitDoubleComplexSamples {
-    var realp: UnsafeMutablePointer<Double>
-    var imagp: UnsafeMutablePointer<Double>
+public struct SplitDoubleComplexSamples {
+    public var realp: UnsafeMutablePointer<Double>
+    public var imagp: UnsafeMutablePointer<Double>
+    public init(realp: UnsafeMutablePointer<Double>, imagp: UnsafeMutablePointer<Double>) {
+        self.realp = realp
+        self.imagp = imagp
+    }
 }
 
-enum WindowFunction {
+public enum WindowFunction {
     case hanningNormalized
     case hanningDenormalized
     case hamming
     case blackman
 }
 
-protocol FloatingPointGeneratable: BinaryFloatingPoint {}
+public protocol FloatingPointGeneratable: BinaryFloatingPoint {}
 
-protocol FloatingPointBiquadFilterable: BinaryFloatingPoint {}
+public protocol FloatingPointBiquadFilterable: BinaryFloatingPoint {}
+
+extension Float: FloatingPointGeneratable {}
+extension Double: FloatingPointGeneratable {}
+extension Float: FloatingPointBiquadFilterable {}
+extension Double: FloatingPointBiquadFilterable {}
 #endif
 
 public protocol BiquadFilter<T> {
