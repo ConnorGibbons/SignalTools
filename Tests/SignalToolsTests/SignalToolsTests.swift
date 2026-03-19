@@ -17,20 +17,17 @@ let randomBinaryData: [UInt8] = .init(repeating: 0, count: TEST_BITS_COUNT).map 
 class SignalToolsTests: XCTestCase {
     
     func testTimeFMDemodulation() throws {
-        let t0_dataGen = Date.timeIntervalSinceReferenceDate
+        let dataGenTimer = Timer(name: "Data generation")
         _ = randomComplexData[0].real // Forces Swift to initialize the array (otherwise it will do it during a later call)
-        let t1_dataGen = Date.timeIntervalSinceReferenceDate
-        print("Data generatrion took: \(t1_dataGen - t0_dataGen) s")
+        dataGenTimer.stopAndPrintTime()
         
-        let t0_slow = Date.timeIntervalSinceReferenceDate
+        let slowTimer = Timer(name: "Slow demod")
         _ = demodulateFMSlow(randomComplexData)
-        let t1_slow = Date.timeIntervalSinceReferenceDate
-        print("Slow demod took: \(t1_slow - t0_slow) s")
+        slowTimer.stopAndPrintTime()
         
-        let t0_normal = Date.timeIntervalSinceReferenceDate
+        let normalTimer = Timer(name: "Normal demod")
         _ = demodulateFM(randomComplexData)
-        let t1_normal = Date.timeIntervalSinceReferenceDate
-        print("Normal demod took: \(t1_normal - t0_normal) s")
+        normalTimer.stopAndPrintTime()
         
         XCTAssert(true)
     }
@@ -44,20 +41,17 @@ class SignalToolsTests: XCTestCase {
     }
     
     func testFloatAverageExtensionCorrectnessAndPerformance() throws {
-        let t0_floatGen = Date.timeIntervalSinceReferenceDate
+        let floatGenTimer = Timer(name: "Float array generation")
         _ = randomFloatData[0]
-        let t1_floatGen = Date.timeIntervalSinceReferenceDate
-        print("Float array generation took: \(t1_floatGen - t0_floatGen) s")
+        floatGenTimer.stopAndPrintTime()
         
-        let t0_baselineAvg = Date.timeIntervalSinceReferenceDate
+        let baselineAvgTimer = Timer(name: "Baseline average")
         let baselineAvg = randomFloatData.reduce(0, +) / Float(randomFloatData.count)
-        let t1_baseLineAvg = Date.timeIntervalSinceReferenceDate
-        print("Calculating average (\(baselineAvg)) with reduce took: \(t1_baseLineAvg - t0_baselineAvg)")
+        baselineAvgTimer.stopAndPrintTime()
         
-        let t0_avg = Date.timeIntervalSinceReferenceDate
+        let avgTimer = Timer(name: "Custom average")
         let avg = randomFloatData.average()
-        let t1_avg = Date.timeIntervalSinceReferenceDate
-        print("Calculating average (\(avg)) with custom .average() took: \(t1_avg - t0_avg)")
+        avgTimer.stopAndPrintTime()
         
         XCTAssertEqual(avg, baselineAvg, accuracy: 0.001)
     }
@@ -80,21 +74,19 @@ class SignalToolsTests: XCTestCase {
         for bit in randomBinaryData {
             bitBuffer.append(bit)
         }
-        let modulate_t0 = Date.timeIntervalSinceReferenceDate
+        let modulateTimer = Timer(name: "AFSK modulation")
         guard let afskModulated = afskModulate(bits: bitBuffer, baud: 1200, sampleRate: 48000, markFreq: 1300, spaceFreq: 2100) else {
             XCTFail("Could not modulate")
             return
         }
-        let modulate_t1 = Date.timeIntervalSinceReferenceDate
-        print("Time to modulate AFSK: \(modulate_t1 - modulate_t0) seconds")
+        modulateTimer.stopAndPrintTime()
         
-        let demodulate_t0 = Date.timeIntervalSinceReferenceDate
+        let demodulateTimer = Timer(name: "AFSK demodulation")
         guard let (afskDemodulated, _) = afskDemodulate(samples: afskModulated, sampleRate: 48000, baud: 1200, markFreq: 1300, spaceFreq: 2100) else {
             XCTFail("Could not demodulate")
             return
         }
-        let demodulate_t1 = Date.timeIntervalSinceReferenceDate
-        print("Time to demodulate AFSK: \(demodulate_t1 - demodulate_t0) seconds")
+        demodulateTimer.stopAndPrintTime()
         
         for i in 0..<randomBinaryData.count {
             XCTAssert(afskDemodulated[i] == bitBuffer[i])
@@ -169,9 +161,13 @@ class SignalToolsTests: XCTestCase {
         print("Decimation factor: \(randomDecimationFactor) \nOutput sample rate: \(randomOutputSampleRate) \nInput sample rate: \(randomInputSampleRate) \nTaps count: \(randomTapsCount)")
         
         let testDataDownsampleFilter = try FIRFilter(type: .lowPass, cutoffFrequency: Double(Double(randomOutputSampleRate) / 2.0), sampleRate: randomInputSampleRate, tapsLength: randomTapsCount)
-        
-//        let downsampledOriginal = SignalTools.downsampleComplexOLD(iqData: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
+
+        let downsampleTimer = Timer(name: "Downsampling \(TEST_DATA_COUNT) samples (Non-stateful)")
         let downsampledFullPass = SignalTools.downsampleComplex(iqData: testData, decimationFactor: randomDecimationFactor, filter: testDataDownsampleFilter.getTaps())
+        downsampleTimer.stopAndPrintTime()
+        
+        // Don't put too much stock in the time this takes, its got a lot of overhead
+        let downsampleTimer2 = Timer(name: "Downsampling \(TEST_DATA_COUNT) samples (stateful)")
         let downsampler = Downsampler(inputSampleRate: randomInputSampleRate, outputSampleRate: randomOutputSampleRate, filter: testDataDownsampleFilter.getTaps())
         let randomlySplitData = randomlySplitArray(testData)
         var downsampledOutput: [ComplexSample] = []
@@ -179,10 +175,34 @@ class SignalToolsTests: XCTestCase {
             let output = downsampler?.downsampleComplex(split)
             downsampledOutput.append(contentsOf: output!)
         }
-        
-        print(downsampledOutput.count)
+        downsampleTimer2.stopAndPrintTime()
         
         XCTAssertTrue(valsAreClose(downsampledOutput, downsampledFullPass, threshold: 0.001))
     }
     
+}
+
+// MARK: - Helpers
+
+private struct Timer {
+    let start: DispatchTime
+    let name: String
+    
+    init(name: String = "") {
+        self.name = name
+        self.start = DispatchTime.now()
+    }
+    
+    func stop() -> Double {
+        let end = DispatchTime.now()
+        let nanoseconds = end.uptimeNanoseconds - start.uptimeNanoseconds
+        let milliseconds = Double(nanoseconds) / 1_000_000
+        return milliseconds
+    }
+    
+    func stopAndPrintTime() {
+        let runtime = self.stop()
+        print("*** \(name) took \(runtime)ms ***")
+    }
+
 }
