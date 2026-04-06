@@ -59,6 +59,10 @@ public enum DSP {
         DSPBackend.conv(signal.baseAddress!, 1, withKernel, -1, result.baseAddress!, 1, result.count, withKernel.count)
     }
     
+    static func convolve(_ signal: UnsafeMutableBufferPointer<Float>, withKernel: [Float], result: inout [Float]) {
+        DSPBackend.conv(signal.baseAddress!, 1, withKernel, -1, &result, 1, result.count, withKernel.count)
+    }
+    
     static func multiplyComplexVectors(input1: UnsafePointer<SplitComplexSamples>, input1Stride: Int, input2: UnsafePointer<SplitComplexSamples>, input2Stride: Int, output: UnsafeMutablePointer<SplitComplexSamples>, outputStride: Int, count: Int, useConjugate: Bool) {
         DSPBackend.zvmul(input1, input1Stride, input2, input2Stride, output, outputStride, count, useConjugate ? -1 : 1)
     }

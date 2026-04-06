@@ -152,8 +152,7 @@ public class FIRFilter: Filter {
         
         copyToStateBuffer(&input)
         var tempOutputBuffer: [Float] = Array(repeating: 0, count: input.count)
-        let workingBufferCopy = Array(workingBuffer) // Should really fix this at some point, there is definitely a less expensive way.
-        DSP.convolve(workingBufferCopy, withKernel: taps, result: &tempOutputBuffer)
+        DSP.convolve(workingBuffer, withKernel: taps, result: &tempOutputBuffer)
         input = tempOutputBuffer
     }
     

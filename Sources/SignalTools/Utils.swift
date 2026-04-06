@@ -111,10 +111,12 @@ public func calculateAngle(rawIQ: [ComplexSample], result: inout [Float]) {
         return
     }
     var splitBuffer = SplitComplexSamples(realp: .allocate(capacity: sampleCount), imagp: .allocate(capacity: sampleCount))
+    defer {
+        splitBuffer.realp.deallocate()
+        splitBuffer.imagp.deallocate()
+    }
     DSP.convert(interleavedComplexVector: rawIQ, toSplitComplexVector: &splitBuffer)
     DSP.phase(input: splitBuffer, result: &result)
-    splitBuffer.realp.deallocate()
-    splitBuffer.imagp.deallocate()
 }
 
 /// vDSP.phase output has a range of [-pi, pi]
