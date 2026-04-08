@@ -14,6 +14,7 @@ typealias DSPBackend = GenericBackend
 #endif
 
 protocol Backend {
+    static func absolute(_ signal: [Float]) -> [Float]
     static func conv(_ signal: UnsafePointer<Float>, _ signalStride: Int, _ kernel: UnsafePointer<Float>, _ kernelStride: Int, _ result: UnsafeMutablePointer<Float>, _ resultStride: Int, _ outputLength: Int, _ kernelLength: Int)
     static func zvmul(_ input1: UnsafePointer<SplitComplexSamples>, _ input1Stride: Int, _ input2: UnsafePointer<SplitComplexSamples>, _ input2Stride: Int, _ output: UnsafeMutablePointer<SplitComplexSamples>, _ outputStride: Int, _ count: Int, _ useConjugate: Int)
     static func zvmulD(_ input1: UnsafePointer<SplitDoubleComplexSamples>, _ input1Stride: Int, _ input2: UnsafePointer<SplitDoubleComplexSamples>, _ input2Stride: Int, _ output: UnsafeMutablePointer<SplitDoubleComplexSamples>, _ outputStride: Int, _ count: Int, _ useConjugate: Int)
@@ -40,6 +41,11 @@ protocol Backend {
 
 // Public facing DSP functions. User shouldn't be using anything defined by the "Backend" protocol directly, it should be wrapped by one of the below functions.
 public enum DSP {
+    
+    /// Returns 'signal' where each element is equal to its absolute value.
+    static func absolute(signal: [Float]) -> [Float] {
+        return DSPBackend.absolute(signal)
+    }
     
     /// Performs either correlation or convolution on two real single-precision vectors.
     /// Provide a negative stride on the filter to do convolution, positive for correlation.

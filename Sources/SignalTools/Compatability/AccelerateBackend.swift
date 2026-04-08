@@ -40,6 +40,10 @@ enum AccelerateBackend: Backend {
         return AccelerateBiquad(coefficients: coefficients, channelCount: channelCount, sectionCount: sectionCount, ofType: ofType)
     }
     
+    static func absolute(_ signal: [Float]) -> [Float] {
+        return vDSP.absolute(signal)
+    }
+    
     static func conv(_ signal: UnsafePointer<Float>, _ signalStride: Int, _ kernel: UnsafePointer<Float>, _ kernelStride: Int, _ result: UnsafeMutablePointer<Float>, _ resultStride: Int, _ outputLength: Int, _ kernelLength: Int) -> Void {
         // vDSP_conv requires the kernel pointer to point to the last element when
         // using a negative stride (convolution mode). The caller passes the pointer

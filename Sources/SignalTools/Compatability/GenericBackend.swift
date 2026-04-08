@@ -143,6 +143,10 @@ enum GenericBackend: Backend {
         return GenericBiquadFilter(coefficients: coefficients, channelCount: channelCount, sectionCount: sectionCount, ofType: ofType)
     }
     
+    static func absolute(_ signal: [Float]) -> [Float] {
+        return signal.map { $0.magnitude }
+    }
+    
     /// Performs convolution / correlation on **signal**.
     /// signalStride: Determines how many elements to advance by in **signal** after each calculation. Must be >= 1.
     /// kernel: The values to multiply with to determine each result.
