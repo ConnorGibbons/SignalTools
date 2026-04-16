@@ -4,6 +4,7 @@
 //
 //  Created by Connor Gibbons  on 6/24/25.
 //
+import Foundation
 
 public extension [Float] {
     

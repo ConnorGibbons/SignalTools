@@ -23,6 +23,7 @@ protocol Backend {
     static func multiply(_ scalar: Float, _ input: [Float]) -> [Float]
     static func zvphas(_ input: UnsafePointer<SplitComplexSamples>, _ inputStride: Int, _ output: UnsafeMutablePointer<Float>, _ outputStride: Int, _ count: Int)
     static func normalize(_ input: UnsafePointer<Float>, _ inputStride: Int, _ output: UnsafeMutablePointer<Float>, _ outputStride: Int, _ calculatedMean: UnsafeMutablePointer<Float>, _ calculatedStdDev: UnsafeMutablePointer<Float>, _ count: Int)
+    static func magnitude(_ input: [ComplexSample]) -> [Float]
     static func meanv(_ input: UnsafePointer<Float>, _ inputStride: Int, _ output: UnsafeMutablePointer<Float>, _ count: Int)
     static func maxvi(_ input: UnsafePointer<Float>, _ inputStride: Int, _ outputValue: UnsafeMutablePointer<Float>, _ outputIndex: UnsafeMutablePointer<Int>, _ count: Int)
     static func indexOfMaximum(_ input: [Float]) -> (UInt, Float)
@@ -113,6 +114,10 @@ public enum DSP {
     
     public static func mean(input: UnsafePointer<Float>, inputStride: Int, output: UnsafeMutablePointer<Float>, count: Int) {
         DSPBackend.meanv(input, inputStride, output, count)
+    }
+    
+    public static func magnitude(signal: [ComplexSample]) -> [Float] {
+        return DSPBackend.magnitude(signal)
     }
     
     public static func indexOfMaximum(input: UnsafePointer<Float>, inputStride: Int, outputValue: UnsafeMutablePointer<Float>, outputIndex: UnsafeMutablePointer<Int>, count: Int) {

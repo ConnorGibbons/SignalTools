@@ -84,6 +84,18 @@ enum AccelerateBackend: Backend {
         vDSP_meanv(input, vDSP_Stride(inputStride), output, vDSP_Length(count))
     }
     
+    static func magnitude(_ input: [ComplexSample]) -> [Float] {
+        var output: [Float] = .init(repeating: 0.0, count: input.count)
+        var splitBuffer: SplitComplexSamples = .init(realp: .allocate(capacity: input.count), imagp: .allocate(capacity: input.count))
+        defer {
+            splitBuffer.realp.deallocate()
+            splitBuffer.imagp.deallocate()
+        }
+        AccelerateBackend.convert(input, &splitBuffer)
+        vDSP_zvabs(&splitBuffer, vDSP_Stride(1), &output, vDSP_Stride(1), vDSP_Length(input.count))
+        return output
+    }
+    
     static func maxvi(_ input: UnsafePointer<Float>,_ inputStride: Int,_ outputValue: UnsafeMutablePointer<Float>,_ outputIndex: UnsafeMutablePointer<Int>,_ count: Int) {
         var index: vDSP_Length = 0
         vDSP_maxvi(input, vDSP_Stride(inputStride), outputValue, &index, vDSP_Length(count))

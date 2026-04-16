@@ -720,6 +720,25 @@ class BackendComparisonTests: XCTestCase {
         //        }
     }
     
+    // MARK: magnitude
+
+    func testMagnitude() {
+        let tAccel = Timer()
+        let accelResult = AccelerateBackend.magnitude(bcRandomComplexData)
+        let accelMs = tAccel.stop()
+
+        let tGeneric = Timer()
+        let genericResult = GenericBackend.magnitude(bcRandomComplexData)
+        let genericMs = tGeneric.stop()
+
+        printComparison("magnitude", accelerateMs: accelMs, genericMs: genericMs)
+
+        XCTAssertEqual(accelResult.count, genericResult.count, "magnitude count mismatch")
+        for i in 0..<accelResult.count {
+            XCTAssertEqual(accelResult[i], genericResult[i], accuracy: floatTolerance, "magnitude mismatch at \(i)")
+        }
+    }
+
     // MARK: makeBiquad
     
     func testBiquad() {

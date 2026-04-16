@@ -320,6 +320,10 @@ enum GenericBackend: Backend {
         output.pointee = sum / Float(count)
     }
     
+    static func magnitude(_ input: [ComplexSample]) -> [Float] {
+        return input.map { $0.magnitude() }
+    }
+    
     /// Find the max value in the **input** vector and its index.
     /// input: Real-valued input vector
     /// inputStride: Number of elements to jump between successive checks.
