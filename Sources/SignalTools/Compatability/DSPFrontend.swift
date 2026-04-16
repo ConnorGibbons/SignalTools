@@ -14,19 +14,19 @@ typealias DSPBackend = GenericBackend
 #endif
 
 protocol Backend {
-    static func absolute(_ signal: [Float]) -> [Float]
+    static func absolute<T: DSPScalar>(_ signal: [T]) -> [T]
     static func conv(_ signal: UnsafePointer<Float>, _ signalStride: Int, _ kernel: UnsafePointer<Float>, _ kernelStride: Int, _ result: UnsafeMutablePointer<Float>, _ resultStride: Int, _ outputLength: Int, _ kernelLength: Int)
     static func zvmul(_ input1: UnsafePointer<SplitComplexSamples>, _ input1Stride: Int, _ input2: UnsafePointer<SplitComplexSamples>, _ input2Stride: Int, _ output: UnsafeMutablePointer<SplitComplexSamples>, _ outputStride: Int, _ count: Int, _ useConjugate: Int)
     static func zvmulD(_ input1: UnsafePointer<SplitDoubleComplexSamples>, _ input1Stride: Int, _ input2: UnsafePointer<SplitDoubleComplexSamples>, _ input2Stride: Int, _ output: UnsafeMutablePointer<SplitDoubleComplexSamples>, _ outputStride: Int, _ count: Int, _ useConjugate: Int)
-    static func multiply(_ input1: [Float], _ input2: [Float], _ result: inout [Float])
+    static func multiply<T: DSPScalar>(_ input1: [T], _ input2: [T], _ result: inout [T])
     static func multiply(_ input1: SplitComplexSamples, _ input2: SplitComplexSamples, _ count: Int, _ useConjugate: Bool, _ result: inout SplitComplexSamples)
-    static func multiply(_ scalar: Float, _ input: [Float]) -> [Float]
+    static func multiply<T: DSPScalar>(_ scalar: T, _ input: [T]) -> [T]
     static func zvphas(_ input: UnsafePointer<SplitComplexSamples>, _ inputStride: Int, _ output: UnsafeMutablePointer<Float>, _ outputStride: Int, _ count: Int)
     static func normalize(_ input: UnsafePointer<Float>, _ inputStride: Int, _ output: UnsafeMutablePointer<Float>, _ outputStride: Int, _ calculatedMean: UnsafeMutablePointer<Float>, _ calculatedStdDev: UnsafeMutablePointer<Float>, _ count: Int)
     static func magnitude(_ input: [ComplexSample]) -> [Float]
     static func meanv(_ input: UnsafePointer<Float>, _ inputStride: Int, _ output: UnsafeMutablePointer<Float>, _ count: Int)
     static func maxvi(_ input: UnsafePointer<Float>, _ inputStride: Int, _ outputValue: UnsafeMutablePointer<Float>, _ outputIndex: UnsafeMutablePointer<Int>, _ count: Int)
-    static func indexOfMaximum(_ input: [Float]) -> (UInt, Float)
+    static func indexOfMaximum<T: DSPScalar>(_ input: [T]) -> (UInt, T)
     static func desamp(_ input: UnsafePointer<Float>, _ decimationFactor: Int, _ filter: UnsafePointer<Float>, _ output: UnsafeMutablePointer<Float>, _ count: Int, _ filterLength: Int)
     static func convert(_ complexSplitVector: SplitComplexSamples, _ interleavedComplexVector: inout [ComplexSample])
     static func convert(_ interleavedComplexVector: [ComplexSample], _ complexSplitVector: inout SplitComplexSamples)
@@ -44,7 +44,7 @@ protocol Backend {
 public enum DSP {
     
     /// Returns 'signal' where each element is equal to its absolute value.
-    public static func absolute(signal: [Float]) -> [Float] {
+    public static func absolute<T: DSPScalar>(signal: [T]) -> [T] {
         return DSPBackend.absolute(signal)
     }
     
@@ -78,15 +78,15 @@ public enum DSP {
         DSPBackend.zvmulD(input1, input1Stride, input2, input2Stride, output, outputStride, count, useConjugate ? -1 : 1)
     }
     
-    public static func multiplyRealVectors(_ input1: [Float], _ input2: [Float], result: inout [Float]) {
+    public static func multiplyRealVectors<T: DSPScalar>(_ input1: [T], _ input2: [T], result: inout [T]) {
         DSPBackend.multiply(input1, input2, &result)
     }
-    
-    public static func divideByScalar(_ vector: [Float], scalar: Float, result: inout [Float]) {
+
+    public static func divideByScalar<T: DSPScalar>(_ vector: [T], scalar: T, result: inout [T]) {
         result = DSPBackend.multiply(1/scalar, vector)
     }
-    
-    public static func multiplyByScalar(_ vector: [Float], scalar: Float, result: inout [Float]) {
+
+    public static func multiplyByScalar<T: DSPScalar>(_ vector: [T], scalar: T, result: inout [T]) {
         result = DSPBackend.multiply(scalar, vector)
     }
     
@@ -124,7 +124,7 @@ public enum DSP {
         DSPBackend.maxvi(input, inputStride, outputValue, outputIndex, count)
     }
     
-    public static func indexOfMaximum(input: [Float]) -> (UInt, Float) {
+    public static func indexOfMaximum<T: DSPScalar>(input: [T]) -> (UInt, T) {
         return DSPBackend.indexOfMaximum(input)
     }
     

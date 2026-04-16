@@ -40,8 +40,13 @@ enum AccelerateBackend: Backend {
         return AccelerateBiquad(coefficients: coefficients, channelCount: channelCount, sectionCount: sectionCount, ofType: ofType)
     }
     
-    static func absolute(_ signal: [Float]) -> [Float] {
-        return vDSP.absolute(signal)
+    static func absolute<T: DSPScalar>(_ signal: [T]) -> [T] {
+        if let floatSignal = signal as? [Float], let result = vDSP.absolute(floatSignal) as? [T] {
+            return result
+        } else if let doubleSignal = signal as? [Double], let result = vDSP.absolute(doubleSignal) as? [T] {
+            return result
+        }
+        return signal.map { $0.magnitude }
     }
     
     static func conv(_ signal: UnsafePointer<Float>, _ signalStride: Int, _ kernel: UnsafePointer<Float>, _ kernelStride: Int, _ result: UnsafeMutablePointer<Float>, _ resultStride: Int, _ outputLength: Int, _ kernelLength: Int) -> Void {
@@ -60,16 +65,27 @@ enum AccelerateBackend: Backend {
         vDSP_zvmulD(input1, vDSP_Stride(input1Stride), input2, vDSP_Stride(input2Stride), output, vDSP_Stride(outputStride), vDSP_Length(count), Int32(useConjugate))
     }
     
-    static func multiply(_ input1: [Float],_ input2: [Float],_ result: inout [Float]) {
-        vDSP.multiply(input1, input2, result: &result)
+    static func multiply<T: DSPScalar>(_ input1: [T],_ input2: [T],_ result: inout [T]) {
+        if var floatResult = result as? [Float], let f1 = input1 as? [Float], let f2 = input2 as? [Float] {
+            vDSP.multiply(f1, f2, result: &floatResult)
+            result = floatResult as! [T]
+        } else if var doubleResult = result as? [Double], let d1 = input1 as? [Double], let d2 = input2 as? [Double] {
+            vDSP.multiply(d1, d2, result: &doubleResult)
+            result = doubleResult as! [T]
+        }
     }
     
     static func multiply(_ input1: SplitComplexSamples,_ input2: SplitComplexSamples,_ count: Int,_ useConjugate: Bool, _ result: inout SplitComplexSamples) {
         vDSP.multiply(input1,by: input2, count: count, useConjugate: useConjugate, result: &result)
     }
     
-    static func multiply(_ scalar: Float,_ input: [Float]) -> [Float] {
-        vDSP.multiply(scalar, input)
+    static func multiply<T: DSPScalar>(_ scalar: T,_ input: [T]) -> [T] {
+        if let floatScalar = scalar as? Float, let floatInput = input as? [Float], let result = vDSP.multiply(floatScalar, floatInput) as? [T] {
+            return result
+        } else if let doubleScalar = scalar as? Double, let doubleInput = input as? [Double], let result = vDSP.multiply(doubleScalar, doubleInput) as? [T] {
+            return result
+        }
+        return input.map { $0 * scalar }
     }
     
     static func zvphas(_ input: UnsafePointer<SplitComplexSamples>,_ inputStride: Int,_ output: UnsafeMutablePointer<Float>,_ outputStride: Int,_ count: Int) {
@@ -102,8 +118,22 @@ enum AccelerateBackend: Backend {
         outputIndex.pointee = Int(index)
     }
     
-    static func indexOfMaximum(_ input: [Float]) -> (UInt, Float) {
-        return vDSP.indexOfMaximum(input)
+    static func indexOfMaximum<T: DSPScalar>(_ input: [T]) -> (UInt, T) {
+        if let floatInput = input as? [Float], let result = vDSP.indexOfMaximum(floatInput) as? (UInt, T) {
+            return result
+        } else if let doubleInput = input as? [Double], let result = vDSP.indexOfMaximum(doubleInput) as? (UInt, T) {
+            return result
+        }
+        guard !input.isEmpty else { return (0, T.zero) }
+        var maxVal: T = -T.infinity
+        var maxIndex: UInt = 0
+        for i in 0..<input.count {
+            if input[i] > maxVal {
+                maxVal = input[i]
+                maxIndex = UInt(i)
+            }
+        }
+        return (maxIndex, maxVal)
     }
     
     static func desamp(_ input: UnsafePointer<Float>,_ decimationFactor: Int,_ filter: UnsafePointer<Float>, _ output: UnsafeMutablePointer<Float>,_ count: Int, _ filterLength: Int) {

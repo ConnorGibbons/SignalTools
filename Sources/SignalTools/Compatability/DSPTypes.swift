@@ -70,6 +70,10 @@ extension Float: FloatingPointBiquadFilterable {}
 extension Double: FloatingPointBiquadFilterable {}
 #endif
 
+public protocol DSPScalar: BinaryFloatingPoint {}
+extension Float: DSPScalar {}
+extension Double: DSPScalar {}
+
 public protocol BiquadFilter<T> {
     associatedtype T: FloatingPointBiquadFilterable
     init?(coefficients: [Double], channelCount: Int, sectionCount: Int, ofType: T.Type)

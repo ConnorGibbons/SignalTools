@@ -143,7 +143,7 @@ enum GenericBackend: Backend {
         return GenericBiquadFilter(coefficients: coefficients, channelCount: channelCount, sectionCount: sectionCount, ofType: ofType)
     }
     
-    static func absolute(_ signal: [Float]) -> [Float] {
+    static func absolute<T: DSPScalar>(_ signal: [T]) -> [T] {
         return signal.map { $0.magnitude }
     }
     
@@ -221,7 +221,7 @@ enum GenericBackend: Backend {
         }
     }
     
-    static func multiply(_ input1: [Float],_ input2: [Float],_ result: inout [Float]) {
+    static func multiply<T: DSPScalar>(_ input1: [T],_ input2: [T],_ result: inout [T]) {
         let shortestLength = min(min(input1.count,input2.count),result.count)
         guard shortestLength > 0 else {
             print("Invalid parameters for multiply")
@@ -242,11 +242,11 @@ enum GenericBackend: Backend {
         GenericBackend.zvmul(&mutableInput1, 1, &mutableInput2, 1, &result, 1, count, useConjugate ? -1 : 1)
     }
     
-    static func multiply(_ scalar: Float,_ input: [Float]) -> [Float] {
+    static func multiply<T: DSPScalar>(_ scalar: T,_ input: [T]) -> [T] {
         guard !input.isEmpty else {
             return []
         }
-        var result: [Float] = .init(repeating: 0, count: input.count)
+        var result: [T] = .init(repeating: 0, count: input.count)
         for i in 0..<input.count {
             result[i] = input[i] * scalar
         }
@@ -347,17 +347,18 @@ enum GenericBackend: Backend {
         outputValue.pointee = max
         outputIndex.pointee = maxIndex
     }
-    
-    static func indexOfMaximum(_ input: [Float]) -> (UInt, Float) {
-        let outputIndex: UnsafeMutablePointer<Int> = .allocate(capacity: 1)
-        let outputValue: UnsafeMutablePointer<Float> = .allocate(capacity: 1)
-        defer {
-            outputIndex.deallocate()
-            outputValue.deallocate()
+
+    static func indexOfMaximum<T: DSPScalar>(_ input: [T]) -> (UInt, T) {
+        guard !input.isEmpty else { return (0, T.zero) }
+        var maxVal: T = -T.infinity
+        var maxIndex: Int = 0
+        for i in 0..<input.count {
+            if input[i] > maxVal {
+                maxVal = input[i]
+                maxIndex = i
+            }
         }
-        
-        GenericBackend.maxvi(input, 1, outputValue, outputIndex, input.count)
-        return (UInt(outputIndex.pointee), outputValue.pointee)
+        return (UInt(maxIndex), maxVal)
     }
     
     /// Downsamples & filters the **input** vector.
