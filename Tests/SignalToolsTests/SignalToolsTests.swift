@@ -180,6 +180,19 @@ class SignalToolsTests: XCTestCase {
         XCTAssertTrue(valsAreClose(downsampledOutput, downsampledFullPass, threshold: 0.001))
     }
     
+    func testBitBufferRange() throws {
+        // Test number: 11111111 00000000
+        let testBinary: UInt16 = 0b1111111100000000
+        var bitBuffer = BitBuffer()
+        bitBuffer.append(bits: testBinary)
+        
+        // Should be: 11111000 0 = 496
+        let newIntFromRange: UInt16? = bitBuffer[3...11]
+        print(newIntFromRange)
+        
+        
+    }
+    
 }
 
 // MARK: - Helpers
