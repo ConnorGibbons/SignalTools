@@ -29,12 +29,27 @@ public struct BitBuffer {
             print("ERROR: Attempted to extract more bits (\(indexes.count)) than the type can hold (\(T.bitWidth)).")
             return nil
         }
-        var value: T = 0
-        for index in indexes {
-            value <<= 1
-            value |= T(self[index])
+        var value: UInt64 = 0
+        let startBuffer = indexes.lowerBound >> 3
+        let endBuffer = indexes.upperBound >> 3
+        for i in startBuffer..<endBuffer {
+            value |= (UInt64(buffer[i]) << ((endBuffer - i) * 8))
         }
-        return value
+        
+        // At this point, value is stored beginning at the n'th byte, where n = endBuffer - startBuffer
+        // For example, if self contains: 11111111 00000000 indexes.lowerBound = 3, indexes.upperBound = 12
+        // startBuffer = 0, endBuffer = 1
+        // So, value = 0 | buffer[0] << (8) = 111(11111 0000)0000
+        // Then, value = 11111111 00000000 | buffer[1] << (0) = 111(11111 0000)0000 --> Parenthesis show the desired range.
+        // This leaves us with needing to trim 3 elements (3 % 8) from the LHS, and 4 elements (8 - (12 % 8)) from the RHS.
+        let trimFromStart = indexes.lowerBound & 7 // # elements that need to be trimmed from LHS
+        let trimFromEnd = 8 - (indexes.upperBound & 7) // # elements that need to be trimmed from RHS
+        value = value >> trimFromEnd
+        if(trimFromStart > 0) {
+            let mask: Int64 = (-1 >> (trimFromStart - 1)) >> (64 - ((endBuffer - startBuffer) * 8)) // Shifts a mask to the buffers starting byte
+            value = value & UInt64(bitPattern: mask)
+        }
+        return T(truncatingIfNeeded: value)
     }
     
     public subscript<T: FixedWidthInteger>(indexes: ClosedRange<Int>) -> T? {
