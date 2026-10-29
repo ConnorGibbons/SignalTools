@@ -5,18 +5,6 @@
 //  Created by Connor Gibbons on 10/8/26.
 //
 
-extension UInt8 {
-    
-    mutating func append(_ bit: UInt8) {
-        self = ((self << 1) & bit)
-    }
-    
-    subscript(index: Int) -> UInt8 {
-        return ((self << (7-index)) & 0b10000000)
-    }
-    
-}
-
 public struct BitBuffer {
     // Buffers filled left to right
     private var buffer: [UInt8] = []
@@ -26,9 +14,10 @@ public struct BitBuffer {
     public init() {}
     
     public mutating func append(_ bit: UInt8) {
-        guard bit == 0 || bit == 1 else { print("Cannot append bit to BitBuffer, it must be 0 or 1."); return }
-        let bufferIndex = bitCount >> 3
-        buffer[bufferIndex].append(bit)
+        guard bit <= 1 else { print("Cannot append bit to BitBuffer, it must be 0 or 1."); return }
+        let bitIndex = bitCount & 7
+        if bitIndex == 0 { buffer.append(0) } // Add a new buffer if needed
+        buffer[bitCount >> 3] |= bit << (7 - bitIndex) // Same as getting buffer[bitCount / 8] and OR'ing with bit shifted to the proper position
         bitCount += 1
     }
     
@@ -81,11 +70,9 @@ public struct BitBuffer {
         }
     }
     
-    public subscript (index: Int) -> Int {
-        let bufferIndex = index >> 3 // Equivalent to division by 8 w/ rounding down
-        let bitIndex = index & 7 // Equivalent to modulus by 8
-        guard bufferIndex < buffer.count else { return 0 }
-        return Int(buffer[bufferIndex][bitIndex])
+    public subscript(index: Int) -> Int {
+        guard index >= 0, index < bitCount else { return 0 }
+        return Int((buffer[index >> 3] >> (7 - (index & 7))) & 1) // Gets buffer index by dividing by 8, gets bit index by modulus by 8, right shifts by (7 - bitIndex), takes the value at lowest bit
     }
     
     public func getBitstring() -> String {
