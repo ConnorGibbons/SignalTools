@@ -190,7 +190,9 @@ class SignalToolsTests: XCTestCase {
         let newIntFromRange: UInt16? = bitBuffer[3...11]
         print(newIntFromRange)
         
-        
+        // Should be: 11111111 00000000 = 65280
+        let newIntFromRange_2: UInt16? = bitBuffer[0...15]
+        print(newIntFromRange_2)
     }
     
 }

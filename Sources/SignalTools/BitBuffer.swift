@@ -29,9 +29,11 @@ public struct BitBuffer {
             print("ERROR: Attempted to extract more bits (\(indexes.count)) than the type can hold (\(T.bitWidth)).")
             return nil
         }
+        let lower = indexes.lowerBound
+        let upper = indexes.upperBound - 1
         var value: UInt64 = 0
-        let startBuffer = indexes.lowerBound >> 3
-        let endBuffer = indexes.upperBound >> 3
+        let startBuffer = lower >> 3
+        let endBuffer = upper >> 3
         for i in startBuffer...endBuffer {
             value |= (UInt64(buffer[i]) << ((endBuffer - i) * 8))
         }
@@ -42,10 +44,10 @@ public struct BitBuffer {
         // So, value = 0 | buffer[0] << (8) = 111(11111 0000)0000
         // Then, value = 11111111 00000000 | buffer[1] << (0) = 111(11111 0000)0000 --> Parenthesis show the desired range.
         // This leaves us with needing to trim 3 elements (3 % 8) from the LHS, and 4 elements (8 - (12 % 8)) from the RHS.
-        let trimFromStart = indexes.lowerBound & 7 // # elements that need to be trimmed from LHS
+        let trimFromStart = lower & 7 // # elements that need to be trimmed from LHS
         let trimFromEnd = (8 - (indexes.upperBound & 7)) % 8 // # elements that need to be trimmed from RHS
         value = value >> trimFromEnd
-        let distanceFromLHS = 64 - ((endBuffer - startBuffer) * 8 + trimFromEnd)
+        let distanceFromLHS = 64 - ((endBuffer - startBuffer + 1) * 8 + trimFromEnd)
         value = value << (distanceFromLHS + trimFromStart)
         value = value >> (64 - indexes.count)
         return T(truncatingIfNeeded: value)
