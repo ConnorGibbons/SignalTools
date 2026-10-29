@@ -7,7 +7,7 @@
 
 public struct BitBuffer {
     // Buffers filled left to right
-    private var buffer: [ByteBuffer] = []
+    @usableFromInline internal var buffer: [ByteBuffer] = []
     private var bitCount: Int = 0
     public var count: Int { return bitCount }
     
@@ -73,6 +73,7 @@ public struct BitBuffer {
         }
     }
     
+    @inlinable
     public subscript (index: Int) -> Int {
         let byteIndex = index >> 3 // Equivalent to division by 8 w/ rounding down
         let bitIndex = index & 7
@@ -112,9 +113,10 @@ public struct BitBuffer {
     
 }
 
-private struct ByteBuffer: Equatable {
-    private var buffer: UInt8 = 0
-    private var bitCount: Int = 0
+@usableFromInline
+internal struct ByteBuffer: Equatable {
+    internal var buffer: UInt8 = 0
+    internal var bitCount: Int = 0
     var isFull: Bool { bitCount == 8 }
     
     mutating func append(_ bit: UInt8) {
@@ -127,10 +129,12 @@ private struct ByteBuffer: Equatable {
         bitCount += 1
     }
     
+    @usableFromInline
     static func == (lhs: ByteBuffer, rhs: ByteBuffer) -> Bool {
         return lhs.buffer == rhs.buffer
     }
     
+    @usableFromInline
     subscript(index: Int) -> Int {
         let mask: UInt8 = 0b10000000 >> index
         return (buffer & mask) != 0 ? 1 : 0
