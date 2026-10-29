@@ -45,10 +45,8 @@ public struct BitBuffer {
         let trimFromStart = indexes.lowerBound & 7 // # elements that need to be trimmed from LHS
         let trimFromEnd = 8 - (indexes.upperBound & 7) // # elements that need to be trimmed from RHS
         value = value >> trimFromEnd
-        if(trimFromStart > 0) {
-            let mask: Int64 = (-1 >> (trimFromStart - 1)) >> (64 - ((endBuffer - startBuffer) * 8)) // Shifts a mask to the buffers starting byte
-            value = value & UInt64(bitPattern: mask)
-        }
+        let distanceFromLHS = 64 - ((endBuffer - startBuffer) * 8) + trimFromEnd
+        value = value << (distanceFromLHS + trimFromStart)
         return T(truncatingIfNeeded: value)
     }
     
