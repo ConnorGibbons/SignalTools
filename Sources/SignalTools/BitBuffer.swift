@@ -5,9 +5,21 @@
 //  Created by Connor Gibbons on 10/8/26.
 //
 
+extension UInt8 {
+    
+    mutating func append(_ bit: UInt8) {
+        self = ((self << 1) & bit)
+    }
+    
+    subscript(index: Int) -> UInt8 {
+        return ((self << (7-index)) & 0b10000000)
+    }
+    
+}
+
 public struct BitBuffer {
     // Buffers filled left to right
-    private var buffer: [ByteBuffer] = []
+    private var buffer: [UInt8] = []
     private var bitCount: Int = 0
     public var count: Int { return bitCount }
     
@@ -15,12 +27,8 @@ public struct BitBuffer {
     
     public mutating func append(_ bit: UInt8) {
         guard bit == 0 || bit == 1 else { print("Cannot append bit to BitBuffer, it must be 0 or 1."); return }
-        var index = buffer.count - 1
-        if buffer.isEmpty || buffer[index].isFull {
-            buffer.append(ByteBuffer())
-            index += 1
-        }
-        buffer[index].append(bit)
+        let bufferIndex = bitCount >> 3
+        buffer[bufferIndex].append(bit)
         bitCount += 1
     }
     
@@ -74,10 +82,10 @@ public struct BitBuffer {
     }
     
     public subscript (index: Int) -> Int {
-        let byteIndex = index >> 3 // Equivalent to division by 8 w/ rounding down
-        let bitIndex = index & 7
-        guard byteIndex < buffer.count else { return 0 }
-        return buffer[byteIndex][bitIndex]
+        let bufferIndex = index >> 3 // Equivalent to division by 8 w/ rounding down
+        let bitIndex = index & 7 // Equivalent to modulus by 8
+        guard bufferIndex < buffer.count else { return 0 }
+        return Int(buffer[bufferIndex][bitIndex])
     }
     
     public func getBitstring() -> String {
@@ -112,33 +120,33 @@ public struct BitBuffer {
     
 }
 
-private struct ByteBuffer: Equatable {
-    private var buffer: UInt8 = 0
-    private var bitCount: Int = 0
-    var isFull: Bool { bitCount == 8 }
-    
-    mutating func append(_ bit: UInt8) {
-        guard bit == 0 || bit == 1 else { print("Cannot append bit to ByteBuffer, must be 0 or 1"); return }
-        guard !isFull else { print("Cannot append bit to ByteBuffer, it is full."); return }
-        if bit == 1 {
-            let mask = UInt8(0b10000000) >> bitCount
-            buffer |= mask
-        }
-        bitCount += 1
-    }
-    
-    static func == (lhs: ByteBuffer, rhs: ByteBuffer) -> Bool {
-        return lhs.buffer == rhs.buffer
-    }
-    
-    subscript(index: Int) -> Int {
-        let mask: UInt8 = 0b10000000 >> index
-        return (buffer & mask) != 0 ? 1 : 0
-    }
-    
-    mutating func clear() {
-        buffer = 0
-        bitCount = 0
-    }
-    
-}
+//private struct ByteBuffer: Equatable {
+//    private var buffer: UInt8 = 0
+//    private var bitCount: Int = 0
+//    var isFull: Bool { bitCount == 8 }
+//    
+//    mutating func append(_ bit: UInt8) {
+//        guard bit == 0 || bit == 1 else { print("Cannot append bit to ByteBuffer, must be 0 or 1"); return }
+//        guard !isFull else { print("Cannot append bit to ByteBuffer, it is full."); return }
+//        if bit == 1 {
+//            let mask = UInt8(0b10000000) >> bitCount
+//            buffer |= mask
+//        }
+//        bitCount += 1
+//    }
+//    
+//    static func == (lhs: ByteBuffer, rhs: ByteBuffer) -> Bool {
+//        return lhs.buffer == rhs.buffer
+//    }
+//    
+//    subscript(index: Int) -> Int {
+//        let mask: UInt8 = 0b10000000 >> index
+//        return (buffer & mask) != 0 ? 1 : 0
+//    }
+//    
+//    mutating func clear() {
+//        buffer = 0
+//        bitCount = 0
+//    }
+//    
+//}
